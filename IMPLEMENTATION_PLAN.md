@@ -1,132 +1,405 @@
-# IMPLEMENTATION PLAN: Vietnam Coffee Booth Visual
+# Vietnam Weather Risk Analysis - Implementation Plan
 
-**Created:** 2026-01-15
-**Deadline:** Thursday 11am (booth printing)
-**Status:** RESEARCH COMPLETE - Ready for design
+**Objective**: Process Vietnam ERA5 weather data to compute climatologies, anomalies, and indices for coffee yield risk analysis.
 
----
+**Data Sources**:
+- Weather: `/Users/tommylees/data/weather/raw/vnm_1980_2025.zarr`
+- Boundaries: `/Users/tommylees/data/raw/boundaries/all_geoboundaries_processed.parquet`
+- Tools: `~/github/tf-data-ml-utils` (install with `uv pip install ".[weather]"`)
 
-## RESEARCH SUMMARY
-
-### Data Verification Status
-
-| Data Point | Value | Status | Source |
-|------------|-------|--------|--------|
-| Vietnam yield (2026) | 2,850-2,900 kg/ha | ✅ VERIFIED | USDA FAS Dec 2025 |
-| Production forecast | 30.8M bags (+6%) | ✅ VERIFIED | USDA FAS Dec 2025 |
-| World's highest yield | 2.9x global average | ✅ VERIFIED | USDA/FAO |
-| Flood risk | 0.17 (defensible) | ✅ VERIFIED | Regional interpolation |
-| Date range | 2020-2026 | ✅ CONFIRMED | Per Jonathan's guidance |
-
-### Key Finding: Original Design Was Wrong
-
-The original yield figure of **42,000 kg/ha is ~14x too high**. The correct value is:
-- **2,800-3,000 kg/ha** (or 2.8-3.0 t/ha)
+**Variables Available**: `2m_temperature`, `2m_temperature_max`, `2m_temperature_min`, `evaporation`, `total_precipitation`, `volumetric_soil_water_layer_1-4`
 
 ---
 
-## FINAL VALUES FOR DESIGN TEAM
+## Code Organisation
 
-### Required Elements
-
-| Element | Value | Unit | Justification |
-|---------|-------|------|---------------|
-| **Yield 2026** | 2,850 | kg/ha | USDA forecasts 2.90 MT/ha; slightly conservative |
-| **Yield Change** | +6% | percentage | USDA: 30.8M bags vs 29M (6.2% increase) |
-| **Flood Risk** | 0.17 | index (0-1) | Central Highlands regional estimate |
-| **Date Range** | 2020-2026 | years | Historical + near-term forecast |
-
-### Graph Data Points (Year-by-Year)
+**Structure**: A set of **5 minimal scripts** that run sequentially, importing from `tf-data-ml-utils` modules.
 
 ```
-Year    Yield (kg/ha)    Type
-─────────────────────────────────
-2020    2,600           Historical
-2021    2,825           Historical
-2022    2,980           Historical (PEAK)
-2023    2,750           Historical (drought)
-2024    2,730           Historical (drought + floods)
-2025    2,800           Historical (recovery)
-2026    2,850           FORECAST (+6%)
+scripts/
+├── 01_inspect_and_standardise.py   # Steps 1-2: Inspect raw data, standardise
+├── 02_areal_aggregation.py         # Step 3: Aggregate to ADM0/1/2 boundaries
+├── 03_climatology.py               # Step 4: Compute day-of-year climatologies
+├── 04_indices_and_anomalies.py     # Steps 5-7: Compute indices, anomalies
+└── 05_visualise.py                 # Step 8: Production plots
 ```
 
-### Y-Axis Scale
-- **Minimum:** 2,000 kg/ha
-- **Maximum:** 3,500 kg/ha
+**Code Standards**:
+- **Type checking**: Use `ty` (NOT mypy) for all type annotations
+- **Linting/Formatting**: Use `ruff` for linting and formatting
+- **Imports**: Import from `tf_data_ml_utils.weather.stages.*` modules
+- **Minimal**: Each script should be <200 lines, single responsibility
+- **Runnable**: Each script runs independently via `uv run python scripts/0X_*.py`
+
+**Run order**:
+```bash
+uv run python scripts/01_inspect_and_standardise.py
+uv run python scripts/02_areal_aggregation.py
+uv run python scripts/03_climatology.py
+uv run python scripts/04_indices_and_anomalies.py
+uv run python scripts/05_visualise.py
+```
+
+**Quality checks** (run after each script):
+```bash
+uv run ty check scripts/
+uv run ruff check scripts/ --fix
+uv run ruff format scripts/
+```
 
 ---
 
-## SUPPORTING NARRATIVE
+## Step 1: Inspect Raw Zarr Data
 
-### If Challenged at the Booth
+**JTBD**: Understand the structure, dimensions, and quality of the raw ERA5 data before processing.
 
-1. **"Where does the 2,850 kg/ha figure come from?"**
-   - USDA FAS December 2025 reports Vietnam Robusta yields at 2.90 MT/ha
-   - Our figure is slightly conservative at 2.85 MT/ha
+**Actions**:
+1. Open the zarr store and print dataset structure (dims, coords, data_vars)
+2. Check time range (expected: 1980-2025 based on metadata)
+3. Check spatial extent (lat/lon bounds for Vietnam)
+4. Check for missing values (NaN counts per variable)
+5. Check units and attributes for each variable
+6. Create a simple map plot of one timestep to verify spatial coverage
 
-2. **"Why +6%?"**
-   - USDA forecasts production up from 29M to 30.8M bags
-   - Recovery from 2023-24 drought
-   - High prices driving farmer investment in inputs
+**Commands**:
+```bash
+cd ~/github/tf-data-ml-utils
+uv run python -c "
+import xarray as xr
+ds = xr.open_zarr('/Users/tommylees/data/weather/raw/vnm_1980_2025.zarr')
+print(ds)
+print('Time range:', ds.time.values.min(), 'to', ds.time.values.max())
+print('Lat range:', ds.latitude.values.min(), 'to', ds.latitude.values.max())
+print('Lon range:', ds.longitude.values.min(), 'to', ds.longitude.values.max())
+"
+```
 
-3. **"What does 0.17 flood risk mean?"**
-   - Moderate flood hazard for Central Highlands
-   - Lower than coastal/delta regions (0.5-0.7)
-   - Higher than average due to recent typhoon impacts
-
-4. **"Why 2020-2026 not longer?"**
-   - Per Jonathan's guidance: shortened timeline, near-term focus
-   - Shows recent climate impacts (2023-24 drought visible)
-   - Demonstrates recovery narrative
-
----
-
-## VERIFICATION SOURCES (January 2026)
-
-### Primary Sources (Used for Data)
-
-| Source | Report | Key Data |
-|--------|--------|----------|
-| [USDA FAS Coffee Semi-Annual](https://apps.fas.usda.gov/newgainapi/api/Report/DownloadReportByFileName?fileName=Coffee+Semi-Annual_Ho+Chi+Minh+City_Vietnam_VM2025-0051.pdf) | Dec 2025 | 30.8M bags, 2.90 MT/ha yield |
-| [USDA FAS Coffee Annual](https://apps.fas.usda.gov/newgainapi/api/Report/DownloadReportByFileName?fileName=Coffee+Annual_Hanoi_Vietnam_VM2025-0018.pdf) | May 2025 | Production baseline |
-| [Daily Coffee News](https://dailycoffeenews.com/2025/12/10/vietnam-coffee-report-record-high-prices-drive-robusta-production/) | Dec 2025 | +6% forecast confirmation |
-
-### Research Verification
-
-- ✅ Cross-referenced USDA FAS with FAO data
-- ✅ Verified yield figures against VICOFA statements
-- ✅ Confirmed 2023-24 drought impact (-10-20%)
-- ✅ Validated flood risk range for Central Highlands
-- ✅ **Updated Nov 2025 flood data: 90+ deaths, $500M damage (worst since 1993)**
-- ✅ Flood risk 0.17 mathematically justified: (Dak Lak 8% + Lam Dong 14%) / 2 × 1.5 = 16.5%
+**Output**: Summary report of data structure, quality, and coverage.
 
 ---
 
-## OUTPUTS GENERATED
+## Step 2: Standardise Data
 
-### Available Files
+**JTBD**: Convert raw ERA5 data to CF conventions with canonical variable names and units.
 
-| File | Description | Location |
-|------|-------------|----------|
-| Design Brief | Copy-paste ready values | `DESIGN_BRIEF_FINAL.md` |
-| Full Research | Detailed documentation | `research/vietnam_coffee_yield_research.md` |
-| Data CSV | Raw data for charts | `outputs/vietnam_coffee_yield_data.csv` |
-| Dark Chart | Booth-style visualization | `outputs/booth_chart_dark.png` |
-| Simple Chart | Clean white visualization | `outputs/booth_chart_simple.png` |
+**Actions**:
+1. Use `weather-standardise` CLI or the `standardise.process()` function
+2. Map ERA5 variable names to canonical names:
+   - `2m_temperature` → `tas` (K → °C or keep K)
+   - `2m_temperature_max` → `tasmax`
+   - `2m_temperature_min` → `tasmin`
+   - `total_precipitation` → `pr` (m/day → mm/day)
+   - `evaporation` → `evspsbl`
+   - `volumetric_soil_water_layer_*` → `mrsos` (or keep separate)
+3. Ensure dimensions are named `latitude`, `longitude`, `time`
+4. Save to `/Users/tommylees/data/weather/interim/vnm_1980_2025.zarr`
+
+**Commands**:
+```bash
+weather-standardise \
+  -i /Users/tommylees/data/weather/raw/vnm_1980_2025.zarr \
+  -o /Users/tommylees/data/weather/interim/vnm_1980_2025.zarr \
+  -s "latitude,longitude"
+```
+
+**Output**: Standardised zarr at `interim/vnm_1980_2025.zarr`
 
 ---
 
-## SIGN-OFF CHECKLIST
+## Step 3: Areal Aggregation
 
-- [x] Data verified against USDA FAS Dec 2025
-- [x] Yield figures confirmed (2,850 kg/ha)
-- [x] +6% forecast justified
-- [x] Flood risk (0.17) defensible
-- [x] Date range (2020-2026) appropriate
-- [ ] **Tommy/Dom reviewed**
-- [ ] **Jonathan approved**
-- [ ] **Design team received**
+**JTBD**: Aggregate gridded data to administrative boundaries (ADM0, ADM1, ADM2).
+
+**Sub-steps**:
+
+### 3a: Extract Vietnam Boundaries
+
+**Actions**:
+1. Load geoboundaries parquet
+2. Filter to Vietnam (`shapegroup == 'VNM'`)
+3. Save separate files for each ADM level:
+   - `vnm_adm0.parquet` (1 region - national)
+   - `vnm_adm1.parquet` (64 regions - provinces)
+   - `vnm_adm2.parquet` (705 regions - districts)
+
+**Commands**:
+```python
+import geopandas as gpd
+gdf = gpd.read_parquet('/Users/tommylees/data/raw/boundaries/all_geoboundaries_processed.parquet')
+vnm = gdf[gdf['shapegroup'] == 'VNM']
+for level in ['ADM0', 'ADM1', 'ADM2']:
+    subset = vnm[vnm['shapetype'] == level]
+    subset.to_parquet(f'/Users/tommylees/data/weather/boundaries/vnm_{level.lower()}.parquet')
+```
+
+### 3b: Run Areal Aggregation
+
+**Actions**:
+1. Use `weather-areal` CLI for each ADM level
+2. Aggregate using area-weighted mean
+3. Output zarr files with `geoid` dimension instead of lat/lon
+
+**Commands**:
+```bash
+# National level (ADM0)
+weather-areal \
+  -i /Users/tommylees/data/weather/interim/vnm_1980_2025.zarr \
+  -s /Users/tommylees/data/weather/boundaries/vnm_adm0.parquet \
+  -o /Users/tommylees/data/weather/processed/areal_aggregation/vnm_adm0_1980_2025.zarr \
+  --id-column geoid
+
+# Provincial level (ADM1)
+weather-areal \
+  -i /Users/tommylees/data/weather/interim/vnm_1980_2025.zarr \
+  -s /Users/tommylees/data/weather/boundaries/vnm_adm1.parquet \
+  -o /Users/tommylees/data/weather/processed/areal_aggregation/vnm_adm1_1980_2025.zarr \
+  --id-column geoid
+
+# District level (ADM2)
+weather-areal \
+  -i /Users/tommylees/data/weather/interim/vnm_1980_2025.zarr \
+  -s /Users/tommylees/data/weather/boundaries/vnm_adm2.parquet \
+  -o /Users/tommylees/data/weather/processed/areal_aggregation/vnm_adm2_1980_2025.zarr \
+  --id-column geoid
+```
+
+**Output**: Three zarr files with dimensions `(time, geoid)` for each ADM level.
 
 ---
 
-*Research completed 2026-01-15*
+## Step 4: Compute Climatologies
+
+**JTBD**: Calculate day-of-year climatologies (mean, std) from baseline period for "normal" reference.
+
+**Actions**:
+1. Use `weather-climatology` CLI
+2. Set baseline period: 1991-2020 (WMO standard 30-year normal)
+3. Compute day-of-year statistics with 31-day rolling window
+4. Apply Fourier smoothing (default 4 bases)
+5. Optionally detrend temperature variables
+
+**Commands**:
+```bash
+# For ADM1 (provincial level - most useful for coffee regions)
+weather-climatology \
+  -i /Users/tommylees/data/weather/processed/areal_aggregation/vnm_adm1_1980_2025.zarr \
+  -o /Users/tommylees/data/weather/processed/climatology/vnm_adm1_climatology.zarr \
+  --baseline-start 1991 \
+  --baseline-end 2020 \
+  --window-size 31
+```
+
+**Output**: Climatology zarr with dimensions `(dayofyear, geoid)` containing `mean` and `std` for each variable.
+
+---
+
+## Step 5: Compute Climate Indices (Normals)
+
+**JTBD**: Calculate derived indices (GDD, EDD, SPI, etc.) that represent "normal" conditions.
+
+**Actions**:
+1. Create a features config YAML for Vietnam coffee-relevant indices:
+   - `gdd_base10`: Growing degree days (base 10°C)
+   - `edd_30`: Extreme degree days (threshold 30°C)
+   - `precip_total`: Total precipitation
+   - `cdd`: Consecutive dry days
+   - `spi_30`: Standardised Precipitation Index (30-day)
+2. Use `weather-indices` CLI to compute indices from climatology
+3. Aggregate to monthly/seasonal periods if needed
+
+**Config** (`configs/vietnam_coffee_indices.yaml`):
+```yaml
+variable_mapping:
+  tas: "tas"
+  pr: "pr"
+  tasmax: "tasmax"
+  tasmin: "tasmin"
+
+features:
+  - name: gdd_base10
+    signal:
+      signal_type: gdd
+      params:
+        t_base: 10.0
+    reducer: sum
+
+  - name: edd_30
+    signal:
+      signal_type: edd
+      params:
+        t_threshold: 30.0
+    reducer: sum
+
+  - name: precip_total
+    signal:
+      signal_type: precip
+    reducer: sum
+
+  - name: cdd_max
+    signal:
+      signal_type: cdd
+    reducer: max
+```
+
+**Commands**:
+```bash
+weather-indices compute-indices \
+  /Users/tommylees/data/weather/processed/climatology/vnm_adm1_climatology.zarr \
+  --spatial-id vnm_adm1 \
+  --config configs/vietnam_coffee_indices.yaml \
+  -o /Users/tommylees/data/weather/processed/indices/vnm_adm1_indices_normal.zarr
+```
+
+**Output**: Indices zarr with "normal" expected values.
+
+---
+
+## Step 6: Compute Actual Values (2020-2025)
+
+**JTBD**: Calculate the same indices for recent historical years to compare against normals.
+
+**Actions**:
+1. Subset aggregated data to 2020-2025
+2. Compute daily indices (same config as Step 5)
+3. Aggregate to monthly/annual periods
+4. Store as separate zarr with `time` dimension preserved
+
+**Commands**:
+```bash
+# First subset to 2020-2025
+uv run python -c "
+import xarray as xr
+ds = xr.open_zarr('/Users/tommylees/data/weather/processed/areal_aggregation/vnm_adm1_1980_2025.zarr')
+ds_recent = ds.sel(time=slice('2020', '2025'))
+ds_recent.to_zarr('/Users/tommylees/data/weather/processed/areal_aggregation/vnm_adm1_2020_2025.zarr', mode='w')
+"
+
+# Then compute indices
+weather-indices compute-indices \
+  /Users/tommylees/data/weather/processed/areal_aggregation/vnm_adm1_2020_2025.zarr \
+  --spatial-id vnm_adm1 \
+  --config configs/vietnam_coffee_indices.yaml \
+  -o /Users/tommylees/data/weather/processed/indices/vnm_adm1_indices_2020_2025.zarr
+```
+
+**Output**: Indices zarr with actual 2020-2025 values.
+
+---
+
+## Step 7: Compute Anomalies
+
+**JTBD**: Calculate departures from normal to identify extreme conditions.
+
+**Actions**:
+1. Load climatology (normals) and actual values
+2. Compute anomalies: `anomaly = actual - climatology_mean`
+3. Compute standardised anomalies: `z_score = (actual - mean) / std`
+4. Flag extreme events (|z| > 2)
+5. Save anomaly dataset
+
+**Script** (`scripts/compute_anomalies.py`):
+```python
+import xarray as xr
+
+# Load data
+clim = xr.open_zarr('.../climatology/vnm_adm1_climatology.zarr')
+actual = xr.open_zarr('.../areal_aggregation/vnm_adm1_2020_2025.zarr')
+
+# Align by day-of-year
+actual_doy = actual.groupby('time.dayofyear')
+
+# Compute anomalies
+anomaly = actual_doy - clim['mean']
+z_score = anomaly / clim['std']
+
+# Flag extremes
+extreme_hot = z_score['tas'] > 2
+extreme_dry = z_score['pr'] < -2
+
+# Save
+anomaly.to_zarr('.../anomalies/vnm_adm1_anomalies_2020_2025.zarr')
+```
+
+**Output**: Anomaly zarr with `anomaly` and `z_score` for each variable.
+
+---
+
+## Step 8: Create Production Plots
+
+**JTBD**: Generate publication-quality visualisations for the conference booth.
+
+**Sub-steps**:
+
+### 8a: Time Series Plots
+
+**Actions**:
+1. Plot precipitation, temperature, evaporation for Central Highlands provinces
+2. Show actual values vs climatology (with uncertainty bands)
+3. Highlight 2023/24 drought and 2025 floods
+4. Use consistent styling (colour palette, fonts, legends)
+
+**Variables to plot**:
+- Daily precipitation with 30-day rolling mean
+- Daily temperature (min/mean/max) with climatology band
+- Cumulative precipitation vs normal
+- Soil moisture anomalies
+
+### 8b: Anomaly Maps
+
+**Actions**:
+1. Create choropleth maps of Vietnam showing anomalies by province
+2. Focus on coffee-relevant provinces (Dak Lak, Lam Dong, Gia Lai, Dak Nong, Kon Tum)
+3. Show drought intensity (2024) and flood intensity (2025)
+
+### 8c: Index Summary Dashboard
+
+**Actions**:
+1. Create multi-panel figure showing:
+   - GDD accumulation vs normal
+   - Consecutive dry days
+   - SPI trajectory
+   - Extreme heat days count
+2. Add annotations for key events
+
+**Output Location**: `/Users/tommylees/github/vietnam_coffee_synthetic/artefacts/weather_risk/`
+
+---
+
+## Summary: Pipeline Stages
+
+| Step | Stage | Input | Output | CLI/Script |
+|------|-------|-------|--------|------------|
+| 1 | Inspect | Raw zarr | Report | Python script |
+| 2 | Standardise | Raw zarr | Interim zarr | `weather-standardise` |
+| 3 | Areal Aggregation | Interim zarr + boundaries | Processed zarr (×3) | `weather-areal` |
+| 4 | Climatology | Processed zarr | Climatology zarr | `weather-climatology` |
+| 5 | Indices (Normal) | Climatology zarr | Indices zarr (normal) | `weather-indices` |
+| 6 | Indices (Actual) | Processed zarr (2020-25) | Indices zarr (actual) | `weather-indices` |
+| 7 | Anomalies | Climatology + Actual | Anomalies zarr | Python script |
+| 8 | Visualisation | All outputs | PNG plots | Python/matplotlib |
+
+---
+
+## Prerequisites
+
+```bash
+# Install tf-data-ml-utils with weather dependencies
+cd ~/github/tf-data-ml-utils
+uv pip install -e ".[weather]"
+
+# Verify installation
+weather-pipeline --help
+weather-standardise --help
+weather-areal --help
+weather-climatology --help
+weather-indices --help
+```
+
+---
+
+## Key Outputs for Conference Booth
+
+1. **Time series**: Vietnam Central Highlands precip/temp vs climatology (2020-2025)
+2. **Anomaly map**: 2024 drought severity by province
+3. **Risk indices**: GDD, EDD, SPI trends for coffee regions
+4. **Event timeline**: Overlay of weather extremes with yield impacts
