@@ -42,9 +42,9 @@ Run these after implementing to get immediate feedback:
 # Tests
 [to be discovered]
 # Typecheck
-[to be discovered]
+uv --with ty run ty check
 # Lint
-[to be discovered]
+uv --with ruff run ruff check . --fix 
 ```
 ## Exit Criteria Verification
 Run these before outputting completion signal:
@@ -53,9 +53,9 @@ Run these before outputting completion signal:
 # Tests
 [to be discovered]
 # Typecheck
-[to be discovered]
+uv --with ty run ty check
 # Lint
-[to be discovered]
+uv --with ruff run ruff check . --fix 
 ```
 
 ## Project Structure

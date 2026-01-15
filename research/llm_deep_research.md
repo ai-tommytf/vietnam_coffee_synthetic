@@ -362,6 +362,8 @@ For a booth graphic where you want credibility but not an academic paper:
 
 If you want, tell me what time resolution you want (annual vs quarterly vs monthly) and I’ll sketch a specific factor equation, sensible coefficient ranges, and a set of “event markers” you can annotate on the chart without putting exact production numbers on it.
 
+# Flood risk data
+
 # ======================================================= #
 # Grok
 # ======================================================= #
@@ -554,3 +556,58 @@ Global Tightness Reflected in Backwardated Spreads & Rising Spec Positioning."
 This positions your visual as insightful, not speculative. For a microstructure angle (spreads/vol/positioning), it could emphasize: "Robusta Spreads Signal Nearby Squeeze; COT Net Long at 46k Lots Amplifies Swings."
 
 Which narrative fits your panel best—fundamentals or microstructure? Any specific tweaks for the synthetic series?
+
+# Weather Risk Data
+### Historical Flood Data and Databases for Vietnam
+
+Vietnam is highly prone to flooding due to its geography, with frequent riverine, coastal, and flash floods exacerbated by typhoons and heavy rainfall. Historical data is compiled from international, national, and regional sources, often focusing on events from the 20th century onward. Below, I summarize key databases, their coverage, and examples of major events. These resources typically include metrics like occurrence, deaths, affected populations, and economic losses. Data is often self-reported by countries, so discrepancies can exist between sources.
+
+#### Key Historical Databases
+1. **EM-DAT (International Disaster Database) by CRED (Centre for Research on the Epidemiology of Disasters)**  
+   - **Description**: A global database of over 27,000 mass disasters from 1900 to present, including floods. For Vietnam, it records events based on criteria like ≥10 deaths or ≥100 affected. Data includes occurrence, location, impacts (fatalities, injured, homeless, affected, economic damages in USD), and disaster type (e.g., riverine flood, flash flood). It's compiled from UN agencies, governments, NGOs, and media.   
+   - **Coverage for Vietnam**: From 1900–2024, with detailed records post-1950. Vietnam has ~200 total natural disasters recorded from 1995–2022, with floods being a major subset (e.g., hydrological disasters dominate). A Kaggle dataset derived from EM-DAT lists mass disasters (including floods) from 1953–2024.  
+   - **Access**: Public query tool at [emdat.be](https://www.emdat.be/database); country profiles available via partners like GFDRR.  
+   - **Examples of Major Flood Events** (from EM-DAT summaries and studies):  
+     - 1971 Flood: 100 deaths, 100,000 affected.  
+     - 1999 Central Vietnam Flood: 595 deaths, 5.5 million affected, $285M damages.  
+     - 2007 Mekong Delta Flood: 73 deaths, 500,000 affected.  
+     - 2010 Central Vietnam Flood: 68 deaths, 200,000 affected.  
+     - 2016 Floods: Multiple events, ~100 deaths total.  
+     - 2020 Extreme Flood (Quang Nam Province): Water levels exceeded historical records from 1950, 1979, 1999; 138 deaths, widespread inundation.  
+     - Overall: Floods account for a significant portion of Vietnam's ~393 natural disasters in 2024 alone (global EM-DAT report), with 16,753 global fatalities that year, many in Asia.
+
+2. **Vietnam National Disaster Database (DANA by CCFSC - Central Committee for Flood and Storm Control)**  
+   - **Description**: National loss database tracking disasters from 1989–2015 (and updated beyond in studies), including floods. Data covers fatalities, injuries, property damage, and economic losses. Used for risk assessments and integrated with GIS for spatial analysis.   
+   - **Coverage for Vietnam**: ~1,000+ events analyzed in studies; floods are the most frequent (e.g., 40% of reported events), followed by storms and flash floods. From 1989–2015, floods caused ~2,000 fatalities.  
+   - **Access**: Managed by Vietnamese government; subsets available via research papers or OD Mekong Datahub (1900–2024 derivative).  
+   - **Examples**: 2013 Quang Nam Flood: High-water marks used for risk mapping; integrated with historical data from 1950 onward. Studies show floods in Central Vietnam (e.g., 2010, 2013) with depths > historical averages.
+
+3. **Global Flood Database (Cloud to Street)**  
+   - **Description**: Satellite-based resource with flood maps, extents, durations, magnitudes, and population exposure. Covers ~900 events globally from 2000–2015, using MODIS imagery and human settlement data.  
+   - **Coverage for Vietnam**: Includes multiple events, e.g., Central Vietnam floods; data on spatial inundation and impacts (e.g., millions exposed).  
+   - **Access**: Interactive explorer tool; contact for full datasets. Useful for urban planning and early warning.  
+   - **Examples**: 2010–2012 heavy rain events in Ho Chi Minh City; validated with 300+ local flood samples.
+
+4. **World Bank Climate Knowledge Portal (GDIS and EM-DAT Integration)**  
+   - **Description**: Historical disasters from 1980–2018 (GDIS for geocoded locations) and 1900–2024 (EM-DAT). Includes flood occurrences, affected people, fatalities, and damages.   
+   - **Coverage for Vietnam**: Floods are the top disaster (39.21% annual hazard occurrence); 1980–2018 data shows storms and floods dominating.  
+   - **Access**: Interactive maps and downloads.  
+   - **Examples**: 2015 Northeastern Flood: Record rainfall, severe impacts in Quang Ninh (analyzed in studies).
+
+5. **Other Specialized Databases**  
+   - **PreventionWeb/UNDRR Analysis**: Preliminary data on floods/storms (1953–2010); floods are 40% of events, with hailstorms (20%), storms (13%), flash floods (7%). Sources include national reports and EM-DAT.   
+   - **IKCEST-DRR (Disaster Risk Reduction Knowledge Service)**: Crawled data from Google News, Wikipedia, EM-DAT; focuses on extreme events like floods.  
+   - **GFDRR Rapid Assessments**: Post-event data, e.g., 2020 Central Vietnam floods.  
+   - **ClimaMeter**: Event-specific (e.g., 2025 Nov floods: 90+ deaths, 200,000+ affected, 15% wetter than past analogs).
+
+#### Flood Indices for Historical Events
+Indices quantify risk, vulnerability, or severity, often applied to historical data for assessment:
+- **INFORM Risk Index**: Composite (0–10); Vietnam: 4.1 (medium-high), with flood exposure at 9.5/10.  
+- **Think Hazard Index**: High for river floods (events every 10 years); climate change increases frequency.   
+- **Flood Risk Index (FRI)**: Hazard × Exposure × Vulnerability (0–1); e.g., Mekong >0.5 in high-risk areas.  
+- **Flood Vulnerability Index (FVI)/Coastal Cities FVI (CCFVI)**: 0–1 scale; Central Highlands ~0.3–0.5, Mekong 0.4–0.6.  
+- **Normalized Flood Severity Index**: Used for urban areas like Ho Chi Minh; validated with 2010/2012 events.  
+- **ND-GAIN Flood Hazard Projection**: 0.64/1 (high).  
+These are often integrated with GIS for spatial mapping (e.g., Hoi An City flood risks). 
+
+For deeper analysis, access EM-DAT or national databases directly. If you need data for a specific period or region, provide details!

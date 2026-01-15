@@ -102,10 +102,6 @@ while [ "$ITERATION" -lt "$MAX_ITERATIONS" ]; do
     # THE CORE PATTERN: Concatenate AGENTS.md + PROMPT.md and feed to Claude
     # Output: JSONL appended to file, human-readable text to stdout
     {
-        cat PROMPT.md
-        echo ""
-        echo "---"
-        echo ""
         cat AGENTS.md
         echo ""
         echo "---"
