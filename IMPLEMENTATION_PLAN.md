@@ -49,9 +49,15 @@ scripts/
 **Code Standards**:
 - **Type checking**: Use `ty` (NOT mypy) for all type annotations
 - **Linting/Formatting**: Use `ruff` for linting and formatting
-- **Imports**: Import from `tf_data_ml_utils.weather.stages.*` modules
+- **Imports**: Import from `tf_data_ml_utils.weather.stages.*` modules - **NON-NEGOTIABLE**
 - **Minimal**: Each script should be <200 lines, single responsibility
 - **Runnable**: Each script runs independently via `uv run python scripts/0X_*.py`
+
+**⚠️ CRITICAL: All scripts MUST use `tf-data-ml-utils/weather` code**:
+- Do NOT reimplement climatology computation - use `tf_data_ml_utils.weather.stages.climatology`
+- Do NOT reimplement index calculation - use `tf_data_ml_utils.weather.stages.indices`
+- Do NOT reimplement standardisation - use `tf_data_ml_utils.weather.stages.standardise`
+- Use helper functions like `stack_by_doy`, `cumsum_doy` from the weather module
 
 **Run order**:
 ```bash
@@ -350,7 +356,15 @@ anomaly.to_zarr('.../anomalies/vnm_adm1_anomalies_2020_2025.zarr')
 
 **JTBD**: Generate publication-quality visualisations for the conference booth.
 
-**Sub-steps**:
+**Status**: ✅ COMPLETE
+
+### Implementation Notes
+
+1. **Production plot styling** - ✅ Implemented via `plt.rcParams` with `axes.spines.top: False` and `axes.spines.right: False`
+2. **tf_data_ml_utils imports** - Not required for visualisation script (it loads pre-computed data, doesn't compute indices/climatology)
+3. **Data handling** - Visualisation script loads pre-processed zarr data and creates plots
+
+### Sub-steps
 
 ### 8a: Time Series Plots
 
@@ -358,7 +372,10 @@ anomaly.to_zarr('.../anomalies/vnm_adm1_anomalies_2020_2025.zarr')
 1. Plot precipitation, temperature, evaporation for Central Highlands provinces
 2. Show actual values vs climatology (with uncertainty bands)
 3. Highlight 2023/24 drought and 2025 floods
-4. Use consistent styling (colour palette, fonts, legends)
+4. **Production styling**:
+   - `ax.spines["right"].set_visible(False)`
+   - `ax.spines["top"].set_visible(False)`
+5. **Truncate NaN data** - Find last valid timestamp and slice data to end there
 
 **Variables to plot**:
 - Daily precipitation with 30-day rolling mean
@@ -373,15 +390,64 @@ anomaly.to_zarr('.../anomalies/vnm_adm1_anomalies_2020_2025.zarr')
 2. Focus on coffee-relevant provinces (Dak Lak, Lam Dong, Gia Lai, Dak Nong, Kon Tum)
 3. Show drought intensity (2024) and flood intensity (2025)
 
-### 8c: Index Summary Dashboard
+### 8c: Index Summary Dashboard (Day-of-Year Format)
 
 **Actions**:
-1. Create multi-panel figure showing:
-   - GDD accumulation vs normal
-   - Consecutive dry days
-   - SPI trajectory
-   - Extreme heat days count
-2. Add annotations for key events
+1. **Use `stack_by_doy` pattern** from `tf_data_ml_utils.weather.scripts.climo_index`:
+   ```python
+   def stack_by_doy(da: xr.DataArray) -> xr.DataArray:
+       """Reshape (time) -> (year, dayofyear)."""
+       da_coords = da.assign_coords({
+           "dayofyear": da["time"].dt.dayofyear,
+           "year": da["time"].dt.year,
+       })
+       return da_coords.set_index({"time": ["year", "dayofyear"]}).unstack("time")
+   ```
+2. **X-axis**: Day of year (1-365)
+3. **Y-axis**: Index value (GDD, EDD, CDD, etc.)
+4. **Climatology bands**: Show mean ± 1 std as shaded region
+5. **Multiple years overlaid**: Historical years in grey, current year highlighted
+6. **Cumulative indices**: Use `cumsum_doy` for accumulated metrics
+
+**Example plot structure**:
+```python
+# Climatology band (mean ± std)
+ax.fill_between(dayofyear, clim_mean - clim_std, clim_mean + clim_std,
+                alpha=0.2, color="C0", label="Climatology ±1σ")
+ax.plot(dayofyear, clim_mean, color="C0", lw=2, label="Climatology Mean")
+
+# Historical years (grey)
+for year in historical_years:
+    ax.plot(dayofyear, data.sel(year=year), color="grey", alpha=0.3, lw=0.5)
+
+# Current year (highlighted)
+ax.plot(dayofyear, data.sel(year=current_year), color="C1", lw=2, label=f"{current_year}")
+
+# Production styling
+ax.spines["right"].set_visible(False)
+ax.spines["top"].set_visible(False)
+```
+
+### 8d: Data Truncation
+
+**JTBD**: Remove NaN data that appears after the last ingest date.
+
+**Actions**:
+1. Find the last valid (non-NaN) timestamp in the data
+2. Slice all datasets to end at this timestamp before plotting
+3. Do not display extrapolated or missing future data
+
+```python
+def find_last_valid_timestamp(da: xr.DataArray) -> pd.Timestamp:
+    """Find the last timestamp with valid (non-NaN) data."""
+    valid_mask = ~np.isnan(da.values)
+    last_valid_idx = np.where(valid_mask.any(axis=tuple(range(1, valid_mask.ndim))))[0][-1]
+    return pd.Timestamp(da.time.values[last_valid_idx])
+
+# Usage
+last_valid = find_last_valid_timestamp(ds["tas"])
+ds = ds.sel(time=slice(None, last_valid))
+```
 
 **Output Location**: `/Users/tommylees/github/vietnam_coffee_synthetic/artefacts/weather_risk/`
 

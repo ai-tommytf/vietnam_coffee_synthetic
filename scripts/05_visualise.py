@@ -49,7 +49,7 @@ PROVINCE_DISPLAY = {
     "??k nong": "Dak Nong",
 }
 
-# Plot styling
+# Plot styling - production quality with clean spines
 plt.rcParams.update(
     {
         "font.family": "sans-serif",
@@ -60,6 +60,8 @@ plt.rcParams.update(
         "axes.facecolor": "white",
         "axes.grid": True,
         "grid.alpha": 0.3,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
     }
 )
 
