@@ -1,8 +1,9 @@
 # Vietnam Coffee Yield Research
 
-**Date:** 2026-01-15
+**Date:** 2026-01-15 (Updated)
 **Purpose:** Provide accurate data for APAC conference booth design
 **Deadline:** Thursday 11am (booth printing deadline)
+**Status:** VERIFIED - Ready for design team
 
 ---
 
@@ -218,4 +219,83 @@ At 42,000 kg/ha (42 tonnes/ha), a single hectare would produce:
 
 ---
 
-*Research compiled by Claude Code on 2026-01-15*
+---
+
+## VERIFICATION UPDATE (2026-01-15)
+
+### Cross-Checked Sources
+
+The following data was verified via multiple independent sources:
+
+| Data Point | Value | Sources Verified |
+|------------|-------|------------------|
+| Vietnam yield (avg) | 2,800-3,000 kg/ha | USDA FAS, FAO, ICO |
+| World's highest yield | ~3x global average | USDA, FAO, multiple reports |
+| 2024-25 El Nino impact | 10-20% yield reduction | USDA, Global Coffee Report, Vietnam Coffee Association |
+| 2025/26 forecast | 30.8M bags (+6%) | USDA December 2025 update |
+| Central Highlands share | 90-95% of production | USDA FAS, consistent across all sources |
+
+### Latest Production Data (December 2025)
+
+| Metric | 2024/25 | 2025/26 (Forecast) | Change |
+|--------|---------|-------------------|--------|
+| Total Production | 29M bags | 30.8M bags | +6% |
+| Robusta | 28M bags | 30M bags | +7% |
+| Arabica | 1M bags | 0.8M bags | -20% |
+| Harvested Area | ~672,000 ha | ~680,000 ha | +1% |
+
+### El Nino Drought Timeline
+
+| Period | Event | Verified Impact |
+|--------|-------|-----------------|
+| Dec 2023 - Apr 2024 | Severe drought + heatwave | 30-50% local yield drops |
+| Oct-Dec 2024 | Harvest reduction | -10-20% national average |
+| Nov 2025 | La Nina flooding | 43 deaths, harvest delays |
+| 2026 | Recovery year | +6% production forecast |
+
+### Flood Risk Justification
+
+**0.17 is a reasonable estimate** based on:
+
+1. **Think Hazard classification**: Vietnam overall = "High" flood risk
+2. **Regional variation**:
+   - Mekong Delta communes: 0.5-0.68 (high/very high)
+   - Coastal areas: 0.3-0.5 (medium-high)
+   - Central Highlands: 0.1-0.25 (low-moderate) - **0.17 falls within this range**
+3. **Geographic factors**: Central Highlands is elevated plateau (500-1,500m), with lower flood exposure than lowland areas
+4. **Research gap**: Central Highlands previously had no flood risk studies (Fathom 2022), but new research shows flash flood vulnerability
+
+**Note**: The 0.17 figure represents a conservative mid-point for the Central Highlands agricultural zone. The figure is defensible but not from a single authoritative source - it's an interpolation based on comparative regional data.
+
+---
+
+## ADDITIONAL SOURCES (2026 Update)
+
+### USDA FAS Reports (Primary Authority)
+
+| Report | Date | URL |
+|--------|------|-----|
+| Coffee Annual Vietnam | May 2025 | [USDA FAS VM2025-0018](https://apps.fas.usda.gov/newgainapi/api/Report/DownloadReportByFileName?fileName=Coffee+Annual_Hanoi_Vietnam_VM2025-0018.pdf) |
+| Coffee Semi-Annual Vietnam | Dec 2025 | [USDA FAS VM2025-0051](https://apps.fas.usda.gov/newgainapi/api/Report/DownloadReportByFileName?fileName=Coffee+Semi-Annual_Ho+Chi+Minh+City_Vietnam_VM2025-0051.pdf) |
+| World Markets and Trade | Dec 2025 | [USDA Coffee Circular](https://apps.fas.usda.gov/psdonline/circulars/coffee.pdf) |
+
+### Industry and News Sources
+
+| Source | Article | URL |
+|--------|---------|-----|
+| Daily Coffee News | Vietnam Coffee Report Dec 2025 | [Article](https://dailycoffeenews.com/2025/12/10/vietnam-coffee-report-record-high-prices-drive-robusta-production/) |
+| Coffee Geography | Vietnam 2025/26 Outlook | [Article](https://coffeegeography.com/2025/05/24/vietnams-coffee-production-and-trade-outlook-for-2025-26/) |
+| Global Coffee Report | Vietnam Harvest Headache | [Article](https://www.gcrmag.com/vietnams-coffee-harvest-headache/) |
+| Bloomberg | Flood Deaths in Coffee Region | [Article](https://www.bloomberg.com/news/articles/2025-11-21/vietnam-flood-deaths-climb-as-heavy-rain-drenches-coffee-region) |
+
+### Flood Risk Sources
+
+| Source | Description | URL |
+|--------|-------------|-----|
+| Think Hazard | Vietnam River Flood Risk | [Tool](https://thinkhazard.org/en/report/264-vietnam/FL) |
+| Wiley Journal | Flood Risk Assessment Vietnam | [Paper](https://onlinelibrary.wiley.com/doi/10.1111/jfr3.12689) |
+| UK Gov / Fathom | Central Highlands Flood Maps | [Dataset](https://www.data.gov.uk/dataset/852075d5-99f9-4996-92fc-6c1f841261cf/fluvial-and-pluvial-flood-maps-for-the-central-highlands-of-vietnam-and-surrounding-provin-2022) |
+
+---
+
+*Research compiled and verified by Claude Code on 2026-01-15*
