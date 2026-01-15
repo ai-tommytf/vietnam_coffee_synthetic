@@ -28,10 +28,15 @@ tmux send-keys -t %3 C-m
 ## Build & Run
 
 ```bash
-# Build
-[to be discovered]
-# Run
-[to be discovered]
+# Install dependencies
+uv sync
+
+# Run weather pipeline scripts in order
+uv run python scripts/01_inspect_and_standardise.py
+uv run python scripts/02_areal_aggregation.py
+uv run python scripts/03_climatology.py
+uv run python scripts/04_indices_and_anomalies.py
+uv run python scripts/05_visualise.py
 ```
 
 ## Validation
@@ -59,19 +64,17 @@ uv --with ruff run ruff check . --fix
 ```
 
 ## Project Structure
-- `src/` - Application source code
-- `src/lib/` - Shared utilities and components
-- `specs/` - Requirement specifications
+- `scripts/` - Weather pipeline scripts (01-05)
+- `configs/` - YAML configuration files
+- `artefacts/` - Generated visualisations
+- `data/` - Local data files
 
 ## Operational Notes
-<!--
-LLM: Update this section when you learn something new about running the project.
-Keep it brief. Status updates belong in IMPLEMENTATION_PLAN.md, not here.
--->
+- zarr v2 required (v3 incompatible with existing data)
+- Drop non-numeric variables before computing climatology/indices
+- Convert geoid to str before writing zarr
 
 ## Codebase Patterns
-<!--
-LLM: Document patterns you discover here.
-Example: "Error handling uses anyhow::Result throughout"
-Example: "All CLI commands are in src/commands/"
--->
+- Scripts use xarray for data handling
+- Outputs go to `artefacts/weather_risk/`
+- Config YAML in `configs/vietnam_coffee_indices.yaml`

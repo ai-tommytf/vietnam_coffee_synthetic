@@ -1,0 +1,65 @@
+# Vietnam Coffee Climate Indices Configuration
+#
+# Used for computing climate indices relevant to coffee production
+# in Vietnam's Central Highlands region.
+
+variable_mapping:
+  tas: "tas"          # Near-surface air temperature
+  pr: "pr"            # Precipitation
+  tasmax: "tasmax"    # Daily maximum temperature
+  tasmin: "tasmin"    # Daily minimum temperature
+  evspsbl: "evspsbl"  # Evaporation
+
+features:
+  # Growing Degree Days - accumulated heat above base temperature
+  # Coffee requires GDD base ~10°C for growth
+  - name: gdd_base10
+    signal:
+      signal_type: gdd
+      params:
+        t_base: 10.0
+    reducer: sum
+
+  # Extreme Degree Days - heat stress above 30°C
+  # High temperatures damage coffee plants
+  - name: edd_30
+    signal:
+      signal_type: edd
+      params:
+        t_threshold: 30.0
+    reducer: sum
+
+  # Total precipitation
+  - name: precip_total
+    signal:
+      signal_type: precip
+    reducer: sum
+
+  # Maximum consecutive dry days
+  # Critical for drought stress assessment
+  - name: cdd_max
+    signal:
+      signal_type: cdd
+      params:
+        precip_threshold: 1.0  # mm/day
+    reducer: max
+
+  # Frost days - days with minimum temp below 0°C
+  # Rare but damaging in highlands
+  - name: frost_days
+    signal:
+      signal_type: frost
+      params:
+        t_threshold: 0.0
+    reducer: count
+
+# Aggregation periods for seasonal analysis
+periods:
+  - name: dry_season
+    months: [11, 12, 1, 2, 3, 4]
+  - name: wet_season
+    months: [5, 6, 7, 8, 9, 10]
+  - name: flowering
+    months: [1, 2, 3]  # Main flowering period
+  - name: harvest
+    months: [10, 11, 12, 1]  # Main harvest period

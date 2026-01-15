@@ -1,6 +1,28 @@
 # Vietnam Weather Risk Analysis - Implementation Plan
 
+**Status**: ✅ COMPLETE - All 5 scripts implemented and tested.
+
 **Objective**: Process Vietnam ERA5 weather data to compute climatologies, anomalies, and indices for coffee yield risk analysis.
+
+## Completed Steps
+
+| Step | Script | Status | Output |
+|------|--------|--------|--------|
+| 1-2 | `01_inspect_and_standardise.py` | ✅ | `interim/vnm_1980_2025.zarr` |
+| 3 | `02_areal_aggregation.py` | ✅ | `processed/areal_aggregation/vnm_adm{0,1,2}_1980_2025.zarr` |
+| 4 | `03_climatology.py` | ✅ | `processed/climatology/vnm_adm1_climatology.zarr` |
+| 5-7 | `04_indices_and_anomalies.py` | ✅ | `processed/indices/`, `processed/anomalies/` |
+| 8 | `05_visualise.py` | ✅ | `artefacts/weather_risk/*.png` |
+
+## Generated Visualisations
+
+1. `01_spatial_verification.png` - Spatial coverage check
+2. `02_time_series_vs_climatology.png` - Temperature and precipitation vs normal
+3. `03_monthly_anomalies.png` - Monthly anomaly heatmaps
+4. `04_index_dashboard.png` - GDD, EDD, dry days, soil moisture
+5. `05_annual_comparison.png` - Annual climate space plot
+
+---
 
 **Data Sources**:
 - Weather: `/Users/tommylees/data/weather/raw/vnm_1980_2025.zarr`

@@ -20,7 +20,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.patheffects as pe
 from matplotlib.lines import Line2D
-import numpy as np
 from pathlib import Path
 
 # Configuration
@@ -132,9 +131,7 @@ def create_vietnam_overview_map(vnm_gdf):
             fontsize=8,
             fontweight="bold",
             color="white",
-            path_effects=[
-                pe.withStroke(linewidth=2, foreground="black")
-            ],
+            path_effects=[pe.withStroke(linewidth=2, foreground="black")],
         )
 
     # Add major cities
@@ -230,7 +227,9 @@ def create_vietnam_overview_map(vnm_gdf):
 
     plt.tight_layout()
     output_path = OUTPUT_DIR / "vietnam_coffee_overview.png"
-    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"])
+    plt.savefig(
+        output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"]
+    )
     plt.close()
     print(f"Saved: {output_path}")
     return output_path
@@ -304,9 +303,7 @@ def create_central_highlands_detail_map(vnm_gdf):
             fontsize=9,
             fontweight="bold",
             color="white",
-            path_effects=[
-                pe.withStroke(linewidth=2, foreground="black")
-            ],
+            path_effects=[pe.withStroke(linewidth=2, foreground="black")],
         )
 
     # Add Buon Ma Thuot marker
@@ -332,7 +329,6 @@ def create_central_highlands_detail_map(vnm_gdf):
 
     # Colour bar / legend for production
     from matplotlib.colors import LinearSegmentedColormap
-    import matplotlib.cm as cm
 
     # Create custom colourbar
     cmap = LinearSegmentedColormap.from_list(
@@ -371,7 +367,9 @@ def create_central_highlands_detail_map(vnm_gdf):
 
     plt.tight_layout()
     output_path = OUTPUT_DIR / "central_highlands_coffee_detail.png"
-    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"])
+    plt.savefig(
+        output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"]
+    )
     plt.close()
     print(f"Saved: {output_path}")
     return output_path
@@ -395,10 +393,14 @@ def create_production_comparison_chart():
         "#5A8F2E",
     ]
 
-    bars = ax.barh(provinces, production_pct, color=colours, edgecolor=COLOURS["border"])
+    bars = ax.barh(
+        provinces, production_pct, color=colours, edgecolor=COLOURS["border"]
+    )
 
     # Add value labels
-    for i, (bar, pct, area, yld) in enumerate(zip(bars, production_pct, area_ha, yields)):
+    for i, (bar, pct, area, yld) in enumerate(
+        zip(bars, production_pct, area_ha, yields)
+    ):
         ax.text(
             bar.get_width() + 0.5,
             bar.get_y() + bar.get_height() / 2,
@@ -436,7 +438,9 @@ def create_production_comparison_chart():
 
     plt.tight_layout()
     output_path = OUTPUT_DIR / "coffee_production_by_province.png"
-    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"])
+    plt.savefig(
+        output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"]
+    )
     plt.close()
     print(f"Saved: {output_path}")
     return output_path
@@ -448,7 +452,6 @@ def create_yield_timeline():
 
     years = [2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027]
     yields = [2800, 2850, 2980, 2680, 2500, 2650, 2850, 2950]
-    types = ["Historical"] * 5 + ["Current"] + ["Forecast"] * 2
 
     # Plot historical data
     hist_years = years[:5]
@@ -552,7 +555,9 @@ def create_yield_timeline():
 
     plt.tight_layout()
     output_path = OUTPUT_DIR / "coffee_yield_timeline.png"
-    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"])
+    plt.savefig(
+        output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"]
+    )
     plt.close()
     print(f"Saved: {output_path}")
     return output_path
@@ -639,7 +644,9 @@ def create_infographic_summary():
     yields_compare = [2850, 1620, 590, 850]
     colours_bar = [COLOURS["coffee_primary"], "#8B4513", "#CD853F", "#A9A9A9"]
 
-    bars = ax4.bar(countries, yields_compare, color=colours_bar, edgecolor=COLOURS["border"])
+    bars = ax4.bar(
+        countries, yields_compare, color=colours_bar, edgecolor=COLOURS["border"]
+    )
     ax4.set_ylabel("Yield (kg/ha)")
     ax4.set_title("Yield Comparison", fontsize=11, fontweight="bold")
     ax4.spines["top"].set_visible(False)
@@ -659,9 +666,17 @@ def create_infographic_summary():
     years = [2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027]
     yields_time = [2800, 2850, 2980, 2680, 2500, 2650, 2850, 2950]
 
-    ax5.plot(years[:5], yields_time[:5], "o-", color=COLOURS["coffee_primary"], linewidth=2)
+    ax5.plot(
+        years[:5], yields_time[:5], "o-", color=COLOURS["coffee_primary"], linewidth=2
+    )
     ax5.plot([2025], [2650], "o", color=COLOURS["highlight"], markersize=10)
-    ax5.plot(years[5:], yields_time[5:], "o--", color=COLOURS["coffee_secondary"], linewidth=2)
+    ax5.plot(
+        years[5:],
+        yields_time[5:],
+        "o--",
+        color=COLOURS["coffee_secondary"],
+        linewidth=2,
+    )
     ax5.fill_between(
         years[5:],
         [y * 0.9 for y in yields_time[5:]],
@@ -716,7 +731,9 @@ def create_infographic_summary():
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     output_path = OUTPUT_DIR / "vietnam_coffee_infographic.png"
-    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"])
+    plt.savefig(
+        output_path, dpi=300, bbox_inches="tight", facecolor=COLOURS["background"]
+    )
     plt.close()
     print(f"Saved: {output_path}")
     return output_path
