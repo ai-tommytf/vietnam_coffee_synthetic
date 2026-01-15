@@ -3,7 +3,8 @@ You are in RESEARCH mode. Your task is to gather up-to-date information and docu
 
 ## Phase 0: Orient
 0a. Study `specs/*` with up to 250 parallel Sonnet subagents to understand what the application needs.
-0b. Study @IMPLEMENTATION_PLAN.md (if present) to identify areas requiring research. Otherwise create it with RESEARCH section.
+0bb. if @IMPLEMENTATION_PLAN.md is not present, create it with RESEARCH section.
+0b. Study @IMPLEMENTATION_PLAN.md (if present) to identify areas requiring research. 
 0c. Study `research/*` (if present) to avoid duplication.
 
 ## Phase 1: Research

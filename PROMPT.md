@@ -2,6 +2,21 @@ I need to be able to meet this request. So this is the request below.
 
 Fundamentally, what this is about is being able to produce a synthetic data set such that we can have a graph of the time series of a forecast for Vietnamese coffee yield. And so what we want to look at is the yield on the y-axis in kilogram per hectare for Vietnam and time series along the x-axis go from 2020 onwards. So it'd be really good for us to get, do some deep research and do some research into what the kind of example coffee yield is and what can be done with that information. So we need to know context and where we can get data for this that already exists. And if it doesn't exist, like just basically what the numbers are and what the range numbers are and what the big events are in the last five years so that we can include those in our synthetic time series. Also we want to get a sense of what the total like kilogram per hectare yield is for coffee in Vietnam in general.
 
+More than 50% of the coffee in the world are produced in Brazil and Vietnam.
+
+Brazil grows and exports Arabica (75%) and Robusta (25%); coffee fields are mostly in southeastern Brazil. Harvest season spans from April to September, with frost damage more likely to occur in June and July, which could affect coffee yields. Flowering and fruit ripening begins in October. At this time, rainfall a key factor as it could affect yields of the next harvest. Overall, Brazil's coffee production has been growing steadily over the years.
+
+The second largest producer, Vietnam, grows Robusta (95%) coffee beans. Harvest season spans from November to March. Most of its production are for exports. Vietnam's domestic demand for coffee has been low.
+
+Note:
+1. Y axis = thousand bags; each bag weighs 60 kilos
+2. Data is updated biannually, and figures for the latest year are estimates
+
+There is USDA data here from wasde for context
+- /Users/tommylees/data/wasde/parsed/wasde_all.csv
+- /Users/tommylees/data/wasde
+
+
 <request>
 Hi Tommy & Dom,Sorry for the late message, but we need some urgent support on a request we have been struggling to get clarity on – and we are now behind on an external deadline. Not sending for immediate action obviously, but would be lovely if you could prioritise in your morning?We’re currently pulling together data visuals for marketing, including a conference booth design. If we don't have this sorted by Thursday 11am, we will miss our opportunity to get the booth printed (big problem!).
 
