@@ -54,12 +54,22 @@ def generate_vietnam_coffee_yield_data() -> list[YieldDataPoint]:
     """
     # Historical data (based on USDA FAS / VICOFA research Jan 2026)
     historical = [
-        YieldDataPoint(year=2020, yield_kg_ha=2600, is_forecast=False),  # COVID baseline
-        YieldDataPoint(year=2021, yield_kg_ha=2825, is_forecast=False),  # Favorable rains
+        YieldDataPoint(
+            year=2020, yield_kg_ha=2600, is_forecast=False
+        ),  # COVID baseline
+        YieldDataPoint(
+            year=2021, yield_kg_ha=2825, is_forecast=False
+        ),  # Favorable rains
         YieldDataPoint(year=2022, yield_kg_ha=2980, is_forecast=False),  # Peak year
-        YieldDataPoint(year=2023, yield_kg_ha=2750, is_forecast=False),  # Drought impact
-        YieldDataPoint(year=2024, yield_kg_ha=2730, is_forecast=False),  # Continued drought + floods
-        YieldDataPoint(year=2025, yield_kg_ha=2800, is_forecast=False),  # Partial recovery
+        YieldDataPoint(
+            year=2023, yield_kg_ha=2750, is_forecast=False
+        ),  # Drought impact
+        YieldDataPoint(
+            year=2024, yield_kg_ha=2730, is_forecast=False
+        ),  # Continued drought + floods
+        YieldDataPoint(
+            year=2025, yield_kg_ha=2800, is_forecast=False
+        ),  # Partial recovery
     ]
 
     # Forecast data with uncertainty bands (+/- 10%)
@@ -194,7 +204,9 @@ def create_booth_visualization(
         spine.set_alpha(0.3)
 
     # Legend
-    ax.legend(loc="upper left", facecolor="#2a2a2a", edgecolor="white", labelcolor="white")
+    ax.legend(
+        loc="upper left", facecolor="#2a2a2a", edgecolor="white", labelcolor="white"
+    )
 
     # Add vertical line at forecast start
     ax.axvline(x=2025.5, color="white", linestyle=":", alpha=0.5)
@@ -235,10 +247,14 @@ def create_simple_booth_chart(
 
     # Prepare data
     hist_years = [d.year for d in historical]
-    hist_yields = [d.yield_kg_ha / 1000 for d in historical]  # Convert to t/ha for cleaner numbers
+    hist_yields = [
+        d.yield_kg_ha / 1000 for d in historical
+    ]  # Convert to t/ha for cleaner numbers
 
     fore_years = [historical[-1].year] + [d.year for d in forecast]
-    fore_yields = [historical[-1].yield_kg_ha / 1000] + [d.yield_kg_ha / 1000 for d in forecast]
+    fore_yields = [historical[-1].yield_kg_ha / 1000] + [
+        d.yield_kg_ha / 1000 for d in forecast
+    ]
     fore_lower = [historical[-1].yield_kg_ha / 1000] + [
         d.lower_bound / 1000 for d in forecast if d.lower_bound
     ]
@@ -341,13 +357,15 @@ def print_summary(data: list[YieldDataPoint]) -> None:
     print("-" * 40)
     for d in data:
         forecast_marker = " (FORECAST)" if d.is_forecast else ""
-        print(f"  {d.year}: {d.yield_kg_ha:,.0f} kg/ha ({d.yield_kg_ha/1000:.2f} t/ha){forecast_marker}")
+        print(
+            f"  {d.year}: {d.yield_kg_ha:,.0f} kg/ha ({d.yield_kg_ha / 1000:.2f} t/ha){forecast_marker}"
+        )
 
     print("\nKEY FIGURES FOR BOOTH:")
     print("-" * 40)
     forecast_2026 = next(d for d in data if d.year == 2026)
     print(f"  Yield 2026:      {forecast_2026.yield_kg_ha:,.0f} kg/ha")
-    print(f"  Yield 2026:      {forecast_2026.yield_kg_ha/1000:.2f} t/ha")
+    print(f"  Yield 2026:      {forecast_2026.yield_kg_ha / 1000:.2f} t/ha")
     print("  Change vs 2025:  +6% (recovery from drought)")
     print("  Flood Risk:      0.17 (index 0-1)")
     print("  Date Range:      2020-2027")
@@ -373,8 +391,12 @@ def main() -> None:
     export_data_csv(data, output_dir / "vietnam_coffee_yield_data.csv")
 
     # Create visualizations
-    create_booth_visualization(data, output_dir / "booth_chart_dark.png", show_numbers=False)
-    create_booth_visualization(data, output_dir / "booth_chart_dark_with_numbers.png", show_numbers=True)
+    create_booth_visualization(
+        data, output_dir / "booth_chart_dark.png", show_numbers=False
+    )
+    create_booth_visualization(
+        data, output_dir / "booth_chart_dark_with_numbers.png", show_numbers=True
+    )
     create_simple_booth_chart(data, output_dir / "booth_chart_simple.png")
 
     print("\nAll outputs generated in ./outputs/")
