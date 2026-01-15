@@ -46,21 +46,22 @@ Run these after implementing to get immediate feedback:
 ```bash
 # Tests
 [to be discovered]
-# Typecheck
-uv --with ty run ty check
+# Typecheck (note: xarray type stubs have known false positives)
+uvx ty check
 # Lint
-uv --with ruff run ruff check . --fix 
+uvx ruff check . --fix
 ```
+
 ## Exit Criteria Verification
 Run these before outputting completion signal:
 ```bash
 # Must ALL pass before <promise>COMPLETE</promise>
 # Tests
 [to be discovered]
-# Typecheck
-uv --with ty run ty check
+# Typecheck (note: xarray type stubs have known false positives)
+uvx ty check
 # Lint
-uv --with ruff run ruff check . --fix 
+uvx ruff check . --fix
 ```
 
 ## Project Structure
@@ -73,6 +74,7 @@ uv --with ruff run ruff check . --fix
 - zarr v2 required (v3 incompatible with existing data)
 - Drop non-numeric variables before computing climatology/indices
 - Convert geoid to str before writing zarr
+- ty type checker shows ~12 false positives from xarray type stubs (ds[list], to_zarr path, data_vars typing)
 
 ## Codebase Patterns
 - Scripts use xarray for data handling

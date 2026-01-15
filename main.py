@@ -348,9 +348,9 @@ def print_summary(data: list[YieldDataPoint]) -> None:
     forecast_2026 = next(d for d in data if d.year == 2026)
     print(f"  Yield 2026:      {forecast_2026.yield_kg_ha:,.0f} kg/ha")
     print(f"  Yield 2026:      {forecast_2026.yield_kg_ha/1000:.2f} t/ha")
-    print(f"  Change vs 2025:  +6% (recovery from drought)")
-    print(f"  Flood Risk:      0.17 (index 0-1)")
-    print(f"  Date Range:      2020-2027")
+    print("  Change vs 2025:  +6% (recovery from drought)")
+    print("  Flood Risk:      0.17 (index 0-1)")
+    print("  Date Range:      2020-2027")
 
     print("\nNOTE: Previous design showed 42,000 kg/ha - this is WRONG (14x too high)")
     print("      Correct value is approximately 2,800-3,000 kg/ha")
