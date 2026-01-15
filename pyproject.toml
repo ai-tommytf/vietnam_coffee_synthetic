@@ -19,3 +19,13 @@ dependencies = [
     "pyarrow>=14.0.0",
     "rasterio>=1.5.0",
 ]
+
+[project.optional-dependencies]
+weather = [
+    # tf-data-ml-utils weather pipeline - provides CLI tools and Python modules for:
+    # - Areal aggregation (weather-areal)
+    # - Climatology computation (weather-climatology)
+    # - Weather indices (weather-indices, GDD, EDD, SPI, etc.)
+    # Install from local path during development:
+    "tf-data-ml-utils[weather] @ file:///Users/tommylees/github/tf-data-ml-utils",
+]

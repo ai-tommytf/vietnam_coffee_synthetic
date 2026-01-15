@@ -1,5 +1,14 @@
 # Operational Context
 
+## Weather Pipeline Dependency
+
+All weather computations MUST use tools from `tf-data-ml-utils`:
+- Areal aggregations
+- Climatologies
+- Weather indices
+
+Install with: `uv pip install ".[weather]"`
+
 ## Saving progress
 - Use Git for version control. Commit each loop with clear messages.
 - Push changes to the remote repository on GitHub frequently.

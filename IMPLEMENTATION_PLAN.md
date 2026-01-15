@@ -4,6 +4,58 @@
 
 **Objective**: Process Vietnam ERA5 weather data to compute climatologies, anomalies, and indices for coffee yield risk analysis.
 
+---
+
+## ⚠️ CRITICAL: Required Dependency - tf-data-ml-utils
+
+**All weather computations MUST use the `tf-data-ml-utils` weather pipeline.**
+
+### Installation
+
+```bash
+# Option 1: Add tf-data-ml-utils as a dependency to this project
+# In pyproject.toml, add to [project.optional-dependencies]:
+#   weather = ["tf-data-ml-utils[weather] @ file:///Users/tommylees/github/tf-data-ml-utils"]
+
+# Option 2: Install directly into the environment
+uv pip install -e "/Users/tommylees/github/tf-data-ml-utils[weather]"
+
+# Then install this project with weather extras
+uv pip install ".[weather]"
+```
+
+### Available CLI Tools (from tf-data-ml-utils)
+
+| CLI Command | Purpose | Module |
+|-------------|---------|--------|
+| `weather-pipeline` | End-to-end pipeline orchestration | `tf_data_ml_utils.weather.e2e` |
+| `weather-ingest` | Ingest raw data | `tf_data_ml_utils.weather.stages.ingest.cli` |
+| `weather-standardise` | Standardise to CF conventions | `tf_data_ml_utils.weather.stages.standardise.cli` |
+| `weather-areal` | Areal aggregation to boundaries | `tf_data_ml_utils.weather.stages.areal_aggregation.cli` |
+| `weather-climatology` | Compute day-of-year climatologies | `tf_data_ml_utils.weather.stages.climatology.cli` |
+| `weather-indices` | Compute weather indices (GDD, EDD, etc.) | `tf_data_ml_utils.weather.stages.indices.cli` |
+
+### Python Imports (for scripts)
+
+```python
+# Areal aggregation
+from tf_data_ml_utils.weather.stages.areal_aggregation import process as areal_process
+
+# Climatology computation
+from tf_data_ml_utils.weather.stages.climatology import compute_climatology
+
+# Weather indices
+from tf_data_ml_utils.weather.stages.indices import compute_indices
+
+# Standardisation
+from tf_data_ml_utils.weather.stages.standardise import process as standardise_process
+
+# Helper functions
+from tf_data_ml_utils.weather.scripts.climo_index import stack_by_doy, cumsum_doy
+```
+
+---
+
 ## Completed Steps
 
 | Step | Script | Status | Output |
@@ -470,17 +522,41 @@ ds = ds.sel(time=slice(None, last_valid))
 
 ## Prerequisites
 
-```bash
-# Install tf-data-ml-utils with weather dependencies
-cd ~/github/tf-data-ml-utils
-uv pip install -e ".[weather]"
+### Environment Setup
 
-# Verify installation
+```bash
+# Navigate to this project
+cd ~/github/vietnam_coffee_synthetic
+
+# Install this project with weather dependencies (pulls in tf-data-ml-utils[weather])
+uv pip install ".[weather]"
+
+# Alternatively, install tf-data-ml-utils separately first:
+# uv pip install -e "/Users/tommylees/github/tf-data-ml-utils[weather]"
+```
+
+### Verify Installation
+
+```bash
+# Verify CLI tools are available (provided by tf-data-ml-utils)
 weather-pipeline --help
 weather-standardise --help
 weather-areal --help
 weather-climatology --help
 weather-indices --help
+
+# Verify Python imports work
+uv run python -c "from tf_data_ml_utils.weather.stages.areal_aggregation import process; print('OK')"
+uv run python -c "from tf_data_ml_utils.weather.stages.climatology import compute_climatology; print('OK')"
+uv run python -c "from tf_data_ml_utils.weather.stages.indices import compute_indices; print('OK')"
+```
+
+### Running Tests
+
+```bash
+# Run tests with weather dependencies
+uv pip install ".[weather]"
+uv run pytest tests/
 ```
 
 ---
