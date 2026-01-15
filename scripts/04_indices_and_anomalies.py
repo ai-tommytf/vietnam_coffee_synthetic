@@ -39,6 +39,9 @@ TREND_PATH = Path(
 INDICES_OUTPUT = Path(
     "/Users/tommylees/data/weather/processed/indices/vnm_adm1_indices_2020_2025.zarr"
 )
+INDICES_FULL_OUTPUT = Path(
+    "/Users/tommylees/data/weather/processed/indices/vnm_adm1_indices_1980_2025.zarr"
+)
 ANOMALIES_OUTPUT = Path(
     "/Users/tommylees/data/weather/processed/anomalies/vnm_adm1_anomalies_2020_2025.zarr"
 )
@@ -228,37 +231,56 @@ def main() -> None:
         print(f"Loading trend parameters from: {TREND_PATH}")
         polys, transforms = load_trend_params(TREND_PATH)
 
-    # Select recent period (2020-2025)
-    print("\nSelecting 2020-2025 period...")
-    ds_recent = ds_agg.sel(time=slice("2020-01-01", "2025-12-31"))
-
-    # Drop non-numeric variables
-    numeric_vars = [v for v in ds_recent.data_vars if ds_recent[v].dtype.kind == "f"]
-    ds_recent = ds_recent[numeric_vars]
-
-    print(f"Recent data: {len(ds_recent.time)} days")
-    print(f"Variables: {list(ds_recent.data_vars)}")
+    # Drop non-numeric variables from full dataset
+    numeric_vars = [v for v in ds_agg.data_vars if ds_agg[v].dtype.kind == "f"]
+    ds_numeric = ds_agg[numeric_vars]
 
     # Load into memory
     print("Loading data into memory...")
-    ds_recent = ds_recent.load()
+    ds_numeric = ds_numeric.load()
     ds_clim = ds_clim.load()
 
-    # Compute indices
-    print("\n" + "-" * 40)
-    ds_indices = compute_daily_indices(ds_recent)
-
-    # Save indices
     import shutil
 
+    # =========================================================================
+    # FULL PERIOD INDICES (1980-2025) - for climatology comparison plots
+    # =========================================================================
+    print("\n" + "-" * 40)
+    print("Computing indices for FULL period (1980-2025)...")
+    print(f"Full data: {len(ds_numeric.time)} days")
+    print(f"Variables: {list(ds_numeric.data_vars)}")
+
+    ds_indices_full = compute_daily_indices(ds_numeric)
+
+    # Save full indices
+    INDICES_FULL_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    if INDICES_FULL_OUTPUT.exists():
+        shutil.rmtree(INDICES_FULL_OUTPUT)
+
+    # Ensure geoid is string type for zarr compatibility
+    ds_indices_full = ds_indices_full.assign_coords(geoid=ds_indices_full.geoid.astype(str))
+
+    print(f"\nSaving full indices to: {INDICES_FULL_OUTPUT}")
+    ds_indices_full.to_zarr(INDICES_FULL_OUTPUT, mode="w")
+
+    # =========================================================================
+    # RECENT PERIOD INDICES (2020-2025) - for anomaly calculations
+    # =========================================================================
+    print("\n" + "-" * 40)
+    print("Computing indices for RECENT period (2020-2025)...")
+    ds_recent = ds_numeric.sel(time=slice("2020-01-01", "2025-12-31"))
+    print(f"Recent data: {len(ds_recent.time)} days")
+
+    ds_indices = compute_daily_indices(ds_recent)
+
+    # Save recent indices
     INDICES_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     if INDICES_OUTPUT.exists():
         shutil.rmtree(INDICES_OUTPUT)
 
-    # Ensure geoid is string type for zarr compatibility
     ds_indices = ds_indices.assign_coords(geoid=ds_indices.geoid.astype(str))
 
-    print(f"\nSaving indices to: {INDICES_OUTPUT}")
+    print(f"\nSaving recent indices to: {INDICES_OUTPUT}")
     ds_indices.to_zarr(INDICES_OUTPUT, mode="w")
 
     # Compute anomalies
@@ -280,7 +302,9 @@ def main() -> None:
     print("\n" + "=" * 60)
     print("INDICES AND ANOMALIES COMPLETE")
     print("=" * 60)
-    print(f"\nIndices output: {INDICES_OUTPUT}")
+    print(f"\nFull indices (1980-2025): {INDICES_FULL_OUTPUT}")
+    print(f"  Variables: {list(ds_indices_full.data_vars)}")
+    print(f"\nRecent indices (2020-2025): {INDICES_OUTPUT}")
     print(f"  Variables: {list(ds_indices.data_vars)}")
     print(f"\nAnomalies output: {ANOMALIES_OUTPUT}")
     print(f"  Variables: {list(ds_anomalies.data_vars)}")

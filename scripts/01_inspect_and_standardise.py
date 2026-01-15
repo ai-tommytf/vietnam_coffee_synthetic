@@ -7,6 +7,8 @@ JTBD:
 
 Input: /Users/tommylees/data/weather/raw/vnm_1980_2025.zarr
 Output: /Users/tommylees/data/weather/interim/vnm_1980_2025.zarr
+
+Uses tf-data-ml-utils standardise stage for CF-compliant standardisation.
 """
 
 from pathlib import Path
@@ -14,6 +16,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from tf_data_ml_utils.weather.stages.standardise import (
+    CanonicalConfig,
+    DimensionConfig,
+    standardise,
+)
 
 # Configuration
 RAW_PATH = Path("/Users/tommylees/data/weather/raw/vnm_1980_2025.zarr")
@@ -22,19 +29,10 @@ OUTPUT_DIR = Path(
     "/Users/tommylees/github/vietnam_coffee_synthetic/artefacts/weather_risk"
 )
 
-
-# Variable mapping: ERA5 names -> canonical CF names
-VARIABLE_MAP = {
-    "2m_temperature": "tas",
-    "2m_temperature_max": "tasmax",
-    "2m_temperature_min": "tasmin",
-    "total_precipitation": "pr",
-    "evaporation": "evspsbl",
-    "volumetric_soil_water_layer_1": "swvl1",
-    "volumetric_soil_water_layer_2": "swvl2",
-    "volumetric_soil_water_layer_3": "swvl3",
-    "volumetric_soil_water_layer_4": "swvl4",
-}
+# Path to canonical variables YAML in tf-data-ml-utils
+CANONICAL_CONFIG_PATH = Path(
+    "/Users/tommylees/github/tf-data-ml-utils/tf_data_ml_utils/weather/stages/standardise/canonical_variables.yaml"
+)
 
 
 def inspect_raw_data(ds: xr.Dataset) -> dict:
@@ -92,63 +90,6 @@ def inspect_raw_data(ds: xr.Dataset) -> dict:
     }
 
 
-def standardise_variable_names(ds: xr.Dataset) -> xr.Dataset:
-    """Rename variables to CF canonical names."""
-    print("\n--- Standardising Variable Names ---")
-    rename_dict = {}
-    for old_name, new_name in VARIABLE_MAP.items():
-        if old_name in ds.data_vars:
-            rename_dict[old_name] = new_name
-            print(f"  {old_name} -> {new_name}")
-
-    return ds.rename(rename_dict)
-
-
-def convert_units(ds: xr.Dataset) -> xr.Dataset:
-    """Convert units to standard values (temperature K->C, precip m->mm)."""
-    print("\n--- Converting Units ---")
-
-    # Temperature: Kelvin to Celsius
-    for var in ["tas", "tasmax", "tasmin"]:
-        if var in ds:
-            # Check if already in Celsius (values < 100 suggest Celsius)
-            sample_mean = float(ds[var].isel(time=0).mean().values)
-            if sample_mean > 100:
-                print(f"  {var}: K -> C (subtracting 273.15)")
-                ds[var] = ds[var] - 273.15
-                ds[var].attrs["units"] = "degC"
-            else:
-                print(f"  {var}: already in C (sample mean: {sample_mean:.1f})")
-                ds[var].attrs["units"] = "degC"
-
-    # Precipitation: m/day to mm/day
-    if "pr" in ds:
-        # ERA5 precipitation is in m, convert to mm
-        sample_mean = float(ds["pr"].isel(time=0).mean().values)
-        if sample_mean < 1:  # Values < 1 suggest metres
-            print("  pr: m -> mm (multiplying by 1000)")
-            ds["pr"] = ds["pr"] * 1000
-            ds["pr"].attrs["units"] = "mm/day"
-        else:
-            print(f"  pr: already in mm (sample mean: {sample_mean:.1f})")
-            ds["pr"].attrs["units"] = "mm/day"
-
-    # Evaporation: m/day to mm/day (and typically negative in ERA5)
-    if "evspsbl" in ds:
-        sample_mean = float(ds["evspsbl"].isel(time=0).mean().values)
-        if abs(sample_mean) < 1:
-            print("  evspsbl: m -> mm and sign flip")
-            ds["evspsbl"] = -ds["evspsbl"] * 1000  # ERA5 evap is negative
-            ds["evspsbl"].attrs["units"] = "mm/day"
-        else:
-            print("  evspsbl: checking sign only")
-            if sample_mean < 0:
-                ds["evspsbl"] = -ds["evspsbl"]
-            ds["evspsbl"].attrs["units"] = "mm/day"
-
-    return ds
-
-
 def mask_missing_data(ds: xr.Dataset) -> xr.Dataset:
     """Apply consistent NaN masking across all variables.
 
@@ -164,12 +105,7 @@ def mask_missing_data(ds: xr.Dataset) -> xr.Dataset:
         return ds
 
     # Create mask: True where tas is valid (not NaN), False where missing
-    # We check across all times to find where ANY timestep has NaN
     tas_valid = ~np.isnan(ds["tas"])
-
-    # Count how many timesteps have valid data per grid cell
-    # If a cell has NaN for any timestep after valid data started, something is wrong
-    # But typically the pattern is: valid data up to a cutoff, then all NaN
 
     # Find the last timestep where tas has any valid data
     has_valid_data = tas_valid.any(dim=["latitude", "longitude"])
@@ -177,11 +113,9 @@ def mask_missing_data(ds: xr.Dataset) -> xr.Dataset:
     if last_valid_idx > 0:
         last_valid_idx = len(has_valid_data) - last_valid_idx - 1
     else:
-        # Check if first element is True (all data valid)
         if has_valid_data.values[-1]:
             last_valid_idx = len(has_valid_data) - 1
         else:
-            # Find from start
             last_valid_idx = int(has_valid_data.values.argmin()) - 1
 
     last_valid_time = ds.time.values[last_valid_idx]
@@ -192,14 +126,12 @@ def mask_missing_data(ds: xr.Dataset) -> xr.Dataset:
     variables_masked = []
     for var in ds.data_vars:
         if var == "tas":
-            continue  # tas is already correct
+            continue
 
-        # Check current NaN status at last few timesteps
         sample_end = ds[var].isel(time=-1).values
         nan_pct_end = 100 * np.isnan(sample_end).sum() / sample_end.size
 
-        if nan_pct_end < 100:  # Has values where it shouldn't
-            # Apply the mask from tas
+        if nan_pct_end < 100:
             ds[var] = ds[var].where(tas_valid)
             variables_masked.append(var)
 
@@ -207,45 +139,6 @@ def mask_missing_data(ds: xr.Dataset) -> xr.Dataset:
         print(f"  Masked variables: {', '.join(variables_masked)}")
     else:
         print("  All variables already have consistent NaN patterns")
-
-    return ds
-
-
-def add_cf_attrs(ds: xr.Dataset) -> xr.Dataset:
-    """Add CF-compliant attributes to variables."""
-    cf_attrs = {
-        "tas": {
-            "long_name": "Near-Surface Air Temperature",
-            "standard_name": "air_temperature",
-        },
-        "tasmax": {
-            "long_name": "Daily Maximum Near-Surface Air Temperature",
-            "standard_name": "air_temperature",
-        },
-        "tasmin": {
-            "long_name": "Daily Minimum Near-Surface Air Temperature",
-            "standard_name": "air_temperature",
-        },
-        "pr": {"long_name": "Precipitation", "standard_name": "precipitation_flux"},
-        "evspsbl": {
-            "long_name": "Evaporation",
-            "standard_name": "water_evapotranspiration_flux",
-        },
-        "swvl1": {"long_name": "Volumetric Soil Water Layer 1 (0-7cm)"},
-        "swvl2": {"long_name": "Volumetric Soil Water Layer 2 (7-28cm)"},
-        "swvl3": {"long_name": "Volumetric Soil Water Layer 3 (28-100cm)"},
-        "swvl4": {"long_name": "Volumetric Soil Water Layer 4 (100-289cm)"},
-    }
-
-    for var, attrs in cf_attrs.items():
-        if var in ds:
-            ds[var].attrs.update(attrs)
-
-    # Add global attributes
-    ds.attrs["Conventions"] = "CF-1.8"
-    ds.attrs["source"] = "ERA5 reanalysis"
-    ds.attrs["institution"] = "ECMWF"
-    ds.attrs["processing"] = "Standardised for Vietnam coffee risk analysis"
 
     return ds
 
@@ -287,28 +180,37 @@ def main() -> None:
     # Inspect
     inspect_raw_data(ds)
 
-    # Standardise
+    # Standardise using tf-data-ml-utils
     print("\n" + "=" * 60)
-    print("STANDARDISATION")
+    print("STANDARDISATION (using tf-data-ml-utils)")
     print("=" * 60)
 
-    ds = standardise_variable_names(ds)
-    ds = convert_units(ds)
+    # Load canonical config
+    canonical_cfg = CanonicalConfig.from_yaml(CANONICAL_CONFIG_PATH)
+    dim_cfg = DimensionConfig(
+        spatial_dims=["latitude", "longitude"],
+        temporal_dims=["time"],
+    )
+
+    print(f"\nUsing canonical config from: {CANONICAL_CONFIG_PATH}")
+    print(f"Dimension config: spatial={dim_cfg.spatial_dims}, temporal={dim_cfg.temporal_dims}")
+
+    # Standardise
+    ds = standardise(ds, canonical_cfg, dim_cfg)
+
+    # Apply additional NaN masking (project-specific)
     ds = mask_missing_data(ds)
-    ds = add_cf_attrs(ds)
 
     # Save
     print("\n--- Saving Standardised Data ---")
     INTERIM_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    # Remove existing zarr if present
     if INTERIM_PATH.exists():
         import shutil
 
         shutil.rmtree(INTERIM_PATH)
         print(f"  Removed existing: {INTERIM_PATH}")
 
-    # Write with safe_chunks=False to handle chunk alignment
     ds.to_zarr(INTERIM_PATH, mode="w", safe_chunks=False)
     print(f"  Saved to: {INTERIM_PATH}")
 
