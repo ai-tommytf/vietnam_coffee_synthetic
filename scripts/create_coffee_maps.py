@@ -453,9 +453,9 @@ def create_yield_timeline():
     years = [2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027]
     yields = [2800, 2850, 2980, 2680, 2500, 2650, 2850, 2950]
 
-    # Plot historical data
-    hist_years = years[:5]
-    hist_yields = yields[:5]
+    # Plot historical data (up to and including 2025)
+    hist_years = years[:6]  # Include 2025 in historical line
+    hist_yields = yields[:6]
     ax.plot(
         hist_years,
         hist_yields,
@@ -466,7 +466,7 @@ def create_yield_timeline():
         label="Historical",
     )
 
-    # Plot current
+    # Highlight current year (2025)
     ax.plot(
         [2025],
         [2650],
@@ -477,9 +477,9 @@ def create_yield_timeline():
         zorder=5,
     )
 
-    # Plot forecast with dashed line
-    forecast_years = years[5:]
-    forecast_yields = yields[5:]
+    # Plot forecast with dashed line - connect from 2025 to remove gap
+    forecast_years = [2025] + years[6:]  # Start from 2025 to connect
+    forecast_yields = [yields[5]] + yields[6:]  # Include 2025 value
     ax.plot(
         forecast_years,
         forecast_yields,
@@ -490,26 +490,37 @@ def create_yield_timeline():
         label="Forecast",
     )
 
-    # Add uncertainty band for forecast
+    # Add uncertainty band for forecast (only for future years)
     ax.fill_between(
-        forecast_years,
-        [y * 0.9 for y in forecast_yields],
-        [y * 1.1 for y in forecast_yields],
+        years[6:],
+        [y * 0.9 for y in yields[6:]],
+        [y * 1.1 for y in yields[6:]],
         alpha=0.2,
         color=COLOURS["coffee_secondary"],
         label="±10% uncertainty",
     )
 
-    # Add event annotations
+    # Add vertical line to mark forecast start
+    ax.axvline(x=2025, color="#999999", linestyle="--", linewidth=1, alpha=0.7)
+    ax.text(
+        2025.1,
+        3350,
+        "Forecast →",
+        fontsize=9,
+        color="#666666",
+        fontweight="bold",
+        va="top",
+    )
+
+    # Add event annotations - El Niño drought and La Niña floods
     events = {
-        2022: ("Peak yield", "above"),
         2024: ("El Niño\ndrought", "below"),
         2025: ("La Niña\nfloods", "below"),
     }
 
     for year, (text, pos) in events.items():
         y_val = yields[years.index(year)]
-        y_offset = 150 if pos == "above" else -180
+        y_offset = -180
         ax.annotate(
             text,
             xy=(year, y_val),
@@ -517,6 +528,7 @@ def create_yield_timeline():
             textcoords="offset points",
             ha="center",
             fontsize=8,
+            fontweight="bold",
             color=COLOURS["text"],
             arrowprops=dict(arrowstyle="->", color=COLOURS["border"], lw=0.8),
         )
@@ -537,7 +549,10 @@ def create_yield_timeline():
     ax.legend(loc="upper left", fontsize=9)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.grid(axis="y", alpha=0.3)
+
+    # Remove y-axis tick labels (per JH feedback) but keep the axis label
+    ax.set_yticklabels([])
+    ax.tick_params(axis="y", length=0)
 
     # Add context note
     ax.text(
@@ -666,24 +681,31 @@ def create_infographic_summary():
     years = [2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027]
     yields_time = [2800, 2850, 2980, 2680, 2500, 2650, 2850, 2950]
 
+    # Historical line (up to and including 2025)
     ax5.plot(
-        years[:5], yields_time[:5], "o-", color=COLOURS["coffee_primary"], linewidth=2
+        years[:6], yields_time[:6], "o-", color=COLOURS["coffee_primary"], linewidth=2
     )
-    ax5.plot([2025], [2650], "o", color=COLOURS["highlight"], markersize=10)
+    # Highlight current year
+    ax5.plot([2025], [2650], "o", color=COLOURS["highlight"], markersize=10, zorder=5)
+    # Forecast - connect from 2025 to remove gap
     ax5.plot(
-        years[5:],
-        yields_time[5:],
+        [2025] + years[6:],
+        [yields_time[5]] + yields_time[6:],
         "o--",
         color=COLOURS["coffee_secondary"],
         linewidth=2,
     )
     ax5.fill_between(
-        years[5:],
-        [y * 0.9 for y in yields_time[5:]],
-        [y * 1.1 for y in yields_time[5:]],
+        years[6:],
+        [y * 0.9 for y in yields_time[6:]],
+        [y * 1.1 for y in yields_time[6:]],
         alpha=0.2,
         color=COLOURS["coffee_secondary"],
     )
+
+    # Vertical line to mark forecast start
+    ax5.axvline(x=2025, color="#999999", linestyle="--", linewidth=1, alpha=0.7)
+    ax5.text(2025.1, 3200, "Forecast →", fontsize=8, color="#666666", fontweight="bold")
 
     ax5.axhline(y=2780, color="#CCCCCC", linestyle=":", alpha=0.7)
     ax5.set_xlabel("Year")
@@ -693,19 +715,25 @@ def create_infographic_summary():
     ax5.spines["top"].set_visible(False)
     ax5.spines["right"].set_visible(False)
 
-    # Add annotations
+    # Remove y-axis tick labels (per JH feedback)
+    ax5.set_yticklabels([])
+    ax5.tick_params(axis="y", length=0)
+
+    # Add annotations - El Niño drought and La Niña floods
     ax5.annotate(
         "El Niño\ndrought",
         xy=(2024, 2500),
         xytext=(2023.5, 2300),
         fontsize=8,
+        fontweight="bold",
         arrowprops=dict(arrowstyle="->", color="#666666", lw=0.5),
     )
     ax5.annotate(
-        "Forecast\n+6%",
-        xy=(2026, 2850),
-        xytext=(2026.5, 3050),
+        "La Niña\nfloods",
+        xy=(2025, 2650),
+        xytext=(2024.3, 2850),
         fontsize=8,
+        fontweight="bold",
         arrowprops=dict(arrowstyle="->", color="#666666", lw=0.5),
     )
 
