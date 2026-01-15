@@ -149,6 +149,68 @@ def convert_units(ds: xr.Dataset) -> xr.Dataset:
     return ds
 
 
+def mask_missing_data(ds: xr.Dataset) -> xr.Dataset:
+    """Apply consistent NaN masking across all variables.
+
+    Uses temperature (tas) as the reference variable since it correctly has NaN
+    where data is missing. This ensures variables like precipitation and
+    evaporation don't show artificial zeros where there's actually no data.
+    """
+    print("\n--- Applying Consistent NaN Mask ---")
+
+    # Use tas as reference - it has NaN where data is truly missing
+    if "tas" not in ds:
+        print("  WARNING: tas not found, skipping NaN masking")
+        return ds
+
+    # Create mask: True where tas is valid (not NaN), False where missing
+    # We check across all times to find where ANY timestep has NaN
+    tas_valid = ~np.isnan(ds["tas"])
+
+    # Count how many timesteps have valid data per grid cell
+    # If a cell has NaN for any timestep after valid data started, something is wrong
+    # But typically the pattern is: valid data up to a cutoff, then all NaN
+
+    # Find the last timestep where tas has any valid data
+    has_valid_data = tas_valid.any(dim=["latitude", "longitude"])
+    last_valid_idx = int(has_valid_data.values[::-1].argmax())
+    if last_valid_idx > 0:
+        last_valid_idx = len(has_valid_data) - last_valid_idx - 1
+    else:
+        # Check if first element is True (all data valid)
+        if has_valid_data.values[-1]:
+            last_valid_idx = len(has_valid_data) - 1
+        else:
+            # Find from start
+            last_valid_idx = int(has_valid_data.values.argmin()) - 1
+
+    last_valid_time = ds.time.values[last_valid_idx]
+    print(f"  Reference variable: tas")
+    print(f"  Last valid timestep: {last_valid_time}")
+
+    # Apply mask to all variables: where tas is NaN, set other vars to NaN too
+    variables_masked = []
+    for var in ds.data_vars:
+        if var == "tas":
+            continue  # tas is already correct
+
+        # Check current NaN status at last few timesteps
+        sample_end = ds[var].isel(time=-1).values
+        nan_pct_end = 100 * np.isnan(sample_end).sum() / sample_end.size
+
+        if nan_pct_end < 100:  # Has values where it shouldn't
+            # Apply the mask from tas
+            ds[var] = ds[var].where(tas_valid)
+            variables_masked.append(var)
+
+    if variables_masked:
+        print(f"  Masked variables: {', '.join(variables_masked)}")
+    else:
+        print("  All variables already have consistent NaN patterns")
+
+    return ds
+
+
 def add_cf_attrs(ds: xr.Dataset) -> xr.Dataset:
     """Add CF-compliant attributes to variables."""
     cf_attrs = {
@@ -232,6 +294,7 @@ def main() -> None:
 
     ds = standardise_variable_names(ds)
     ds = convert_units(ds)
+    ds = mask_missing_data(ds)
     ds = add_cf_attrs(ds)
 
     # Save

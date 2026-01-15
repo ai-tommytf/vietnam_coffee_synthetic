@@ -1,7 +1,7 @@
 """
 Step 4: Compute Climatologies
 
-JTBD: Calculate day-of-year climatologies (mean, std) from baseline period.
+JTBD: Calculate day-of-year climatologies from baseline period using tf-data-ml-utils.
 
 Baseline period: 1991-2020 (WMO standard 30-year normal)
 
@@ -11,8 +11,19 @@ Output: /Users/tommylees/data/weather/processed/climatology/vnm_adm1_climatology
 
 from pathlib import Path
 
-import numpy as np
 import xarray as xr
+
+from tf_data_ml_utils.weather.stages.climatology import (
+    ClimatologyConfig,
+    ClimatologyOutput,
+    Distribution,
+    compute_climatology,
+)
+from tf_data_ml_utils.weather.stages.climatology.config import (
+    DetrendConfig,
+    SmoothingConfig,
+    VariableConfig,
+)
 
 # Configuration
 INPUT_PATH = Path(
@@ -21,109 +32,124 @@ INPUT_PATH = Path(
 OUTPUT_PATH = Path(
     "/Users/tommylees/data/weather/processed/climatology/vnm_adm1_climatology.zarr"
 )
+TREND_PATH = Path(
+    "/Users/tommylees/data/weather/processed/climatology/vnm_adm1_trend_params.zarr"
+)
 
 BASELINE_START = 1991
 BASELINE_END = 2020
-WINDOW_SIZE = 31  # Rolling window for smoothing
+WINDOW_SIZE = 31  # Rolling window for smoothing (must be odd)
 
 
-def compute_doy_climatology(
-    ds: xr.Dataset,
-    baseline_start: int,
-    baseline_end: int,
-    window_size: int = 31,
-) -> xr.Dataset:
-    """Compute day-of-year climatology with rolling window smoothing."""
-    print(f"Computing climatology for {baseline_start}-{baseline_end}")
-    print(f"Using {window_size}-day rolling window")
-
-    # Drop non-numeric variables
-    numeric_vars = [v for v in ds.data_vars if ds[v].dtype in [np.float32, np.float64]]
-    ds = ds[numeric_vars]
-    print(f"Processing variables: {list(ds.data_vars)}")
-
-    # Select baseline period
-    ds_baseline = ds.sel(time=slice(f"{baseline_start}-01-01", f"{baseline_end}-12-31"))
-    print(f"Baseline data: {len(ds_baseline.time)} days")
-
-    # Add day-of-year coordinate
-    ds_baseline = ds_baseline.assign_coords(dayofyear=ds_baseline.time.dt.dayofyear)
-
-    # Compute mean and std for each day of year
-    print("Computing day-of-year statistics...")
-
-    # Group by day of year
-    doy_mean = ds_baseline.groupby("dayofyear").mean(dim="time")
-    doy_std = ds_baseline.groupby("dayofyear").std(dim="time")
-
-    # Apply rolling window smoothing
-    print("Applying rolling window smoothing...")
-    half_window = window_size // 2
-
-    # Smooth each variable
-    smoothed_mean_data = {}
-    smoothed_std_data = {}
-
-    for var in doy_mean.data_vars:
-        # Get values (shape: dayofyear, geoid)
-        mean_vals = doy_mean[var].values
-        std_vals = doy_std[var].values
-
-        # Pad with wrap-around for circular smoothing
-        mean_padded = np.concatenate(
-            [mean_vals[-half_window:], mean_vals, mean_vals[:half_window]], axis=0
-        )
-        std_padded = np.concatenate(
-            [std_vals[-half_window:], std_vals, std_vals[:half_window]], axis=0
-        )
-
-        # Apply uniform filter (rolling mean)
-        from scipy.ndimage import uniform_filter1d
-
-        mean_smoothed = uniform_filter1d(
-            mean_padded, size=window_size, axis=0, mode="nearest"
-        )
-        std_smoothed = uniform_filter1d(
-            std_padded, size=window_size, axis=0, mode="nearest"
-        )
-
-        # Trim padding
-        smoothed_mean_data[var] = mean_smoothed[half_window:-half_window]
-        smoothed_std_data[var] = std_smoothed[half_window:-half_window]
-
-    # Create output dataset
-    output_ds = xr.Dataset(
-        {
-            **{
-                f"{var}_mean": (["dayofyear", "geoid"], data)
-                for var, data in smoothed_mean_data.items()
-            },
-            **{
-                f"{var}_std": (["dayofyear", "geoid"], data)
-                for var, data in smoothed_std_data.items()
-            },
-        },
-        coords={
-            "dayofyear": np.arange(1, 367),  # 1-366 for leap years
-            "geoid": doy_mean.geoid.values,
+def create_climatology_config() -> ClimatologyConfig:
+    """Create climatology configuration for Vietnam weather data."""
+    return ClimatologyConfig(
+        baseline_years=(BASELINE_START, BASELINE_END),
+        window_size=WINDOW_SIZE,
+        time_dim="time",
+        # Detrending: enable for temperature variables to remove climate trend
+        detrend=DetrendConfig(
+            enabled=True,
+            variables=["tas", "tasmin", "tasmax"],
+            polyorder=1,
+            baseline="1980-01-01",
+        ),
+        # Fourier smoothing for seasonal cycle
+        smoothing=SmoothingConfig(
+            enabled=True,
+            n_bases=3,
+            period=365.25,
+        ),
+        # Per-variable distribution configuration
+        variables={
+            "tas": VariableConfig(distribution=Distribution.NORM),
+            "tasmin": VariableConfig(distribution=Distribution.NORM),
+            "tasmax": VariableConfig(distribution=Distribution.NORM),
+            "pr": VariableConfig(
+                distribution=Distribution.ZI_GAMMA,
+                filter_positive=True,
+                fit_kwargs={"floc": 0},
+            ),
+            "evspsbl": VariableConfig(
+                distribution=Distribution.ZI_GAMMA,
+                filter_positive=False,  # Evaporation can be negative in ERA5
+                fit_kwargs={"floc": 0},
+            ),
+            "swvl1": VariableConfig(
+                distribution=Distribution.ZI_GAMMA,
+                filter_positive=True,
+                fit_kwargs={"floc": 0},
+            ),
+            "swvl2": VariableConfig(
+                distribution=Distribution.ZI_GAMMA,
+                filter_positive=True,
+                fit_kwargs={"floc": 0},
+            ),
+            "swvl3": VariableConfig(
+                distribution=Distribution.ZI_GAMMA,
+                filter_positive=True,
+                fit_kwargs={"floc": 0},
+            ),
+            "swvl4": VariableConfig(
+                distribution=Distribution.ZI_GAMMA,
+                filter_positive=True,
+                fit_kwargs={"floc": 0},
+            ),
         },
     )
 
-    # Add metadata
-    output_ds.attrs["baseline_start"] = baseline_start
-    output_ds.attrs["baseline_end"] = baseline_end
-    output_ds.attrs["window_size"] = window_size
-    output_ds.attrs["description"] = (
-        f"Day-of-year climatology from {baseline_start}-{baseline_end}"
+
+def save_climatology_output(
+    output: ClimatologyOutput, clim_path: Path, trend_path: Path
+) -> None:
+    """Save climatology output to zarr files."""
+    import shutil
+
+    from tf_data_ml_utils.weather.stages.climatology.io import (
+        get_baseline,
+        polys_to_coeffs,
     )
 
-    return output_ds
+    # Save climatology
+    clim_path.parent.mkdir(parents=True, exist_ok=True)
+    if clim_path.exists():
+        shutil.rmtree(clim_path)
+
+    print(f"Saving climatology to: {clim_path}")
+    output.climatology.to_zarr(clim_path, mode="w")
+
+    # Save trend parameters if available
+    # Convert poly1d objects to numeric coefficients for serialisation
+    if output.trend_params is not None and len(output.trend_params.data_vars) > 0:
+        if trend_path.exists():
+            shutil.rmtree(trend_path)
+        print(f"Saving trend parameters to: {trend_path}")
+
+        # Convert poly1d to coefficients
+        coeffs = polys_to_coeffs(output.trend_params.compute())
+
+        # Get baseline from transforms
+        if output.transforms is not None:
+            baseline = get_baseline(output.transforms.compute())
+        else:
+            baseline = "1980-01-01"
+
+        coeffs.attrs["baseline"] = baseline
+        coeffs.attrs["polyorder"] = 1
+        coeffs.attrs["slope_units"] = "per_day"
+
+        # Ensure geoid is string type for zarr compatibility
+        if "geoid" in coeffs.coords:
+            coeffs = coeffs.assign_coords(geoid=coeffs.geoid.astype(str))
+
+        coeffs.to_zarr(trend_path, mode="w")
 
 
 def main() -> None:
     """Main entry point."""
     print("=" * 60)
     print("VIETNAM WEATHER DATA - CLIMATOLOGY")
+    print("Using tf-data-ml-utils climatology module")
     print("=" * 60)
 
     # Load aggregated data
@@ -133,37 +159,52 @@ def main() -> None:
     print(f"Regions: {len(ds.geoid)}")
     print(f"Variables: {list(ds.data_vars)}")
 
-    # Load into memory
+    # Drop non-numeric variables (region_name)
+    numeric_vars = [v for v in ds.data_vars if ds[v].dtype.kind == "f"]
+    ds = ds[numeric_vars]
+    print(f"Numeric variables for climatology: {list(ds.data_vars)}")
+
+    # Load into memory for faster processing
     print("\nLoading data into memory...")
     ds = ds.load()
 
-    # Compute climatology
+    # Create configuration
     print("\n" + "-" * 40)
-    ds_clim = compute_doy_climatology(
-        ds,
-        baseline_start=BASELINE_START,
-        baseline_end=BASELINE_END,
-        window_size=WINDOW_SIZE,
-    )
+    cfg = create_climatology_config()
+    print(f"Baseline period: {cfg.baseline_years[0]}-{cfg.baseline_years[1]}")
+    print(f"Window size: {cfg.window_size} days")
+    print(f"Detrending enabled: {cfg.detrend.enabled}")
+    print(f"Smoothing enabled: {cfg.smoothing.enabled}")
 
-    # Save output
+    # Compute climatology using tf-data-ml-utils
+    print("\nComputing climatology...")
+    output: ClimatologyOutput = compute_climatology(ds, cfg)
+
+    # Save outputs
     print("\n" + "-" * 40)
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    save_climatology_output(output, OUTPUT_PATH, TREND_PATH)
 
-    if OUTPUT_PATH.exists():
-        import shutil
-
-        shutil.rmtree(OUTPUT_PATH)
-
-    print(f"Saving climatology to: {OUTPUT_PATH}")
-    ds_clim.to_zarr(OUTPUT_PATH, mode="w")
-
+    # Summary
     print("\n" + "=" * 60)
     print("CLIMATOLOGY COMPLETE")
     print("=" * 60)
-    print(f"\nOutput: {OUTPUT_PATH}")
-    print(f"Variables: {list(ds_clim.data_vars)}")
-    print(f"Shape: {dict(ds_clim.sizes)}")
+    print(f"\nClimatology output: {OUTPUT_PATH}")
+    print(f"  Variables: {list(output.climatology.data_vars)}")
+    print(f"  Dimensions: {dict(output.climatology.sizes)}")
+    if output.trend_params is not None and len(output.trend_params.data_vars) > 0:
+        print(f"\nTrend parameters: {TREND_PATH}")
+        print(f"  Variables: {list(output.trend_params.data_vars)}")
+
+    # Show metadata
+    if output.metadata:
+        print("\nMetadata:")
+        for key, value in output.metadata.items():
+            if isinstance(value, dict):
+                print(f"  {key}:")
+                for k, v in value.items():
+                    print(f"    {k}: {v}")
+            else:
+                print(f"  {key}: {value}")
 
 
 if __name__ == "__main__":

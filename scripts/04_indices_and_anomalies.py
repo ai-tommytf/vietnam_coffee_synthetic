@@ -2,12 +2,13 @@
 Step 5-7: Compute Indices and Anomalies
 
 JTBD:
-- Compute climate indices (GDD, EDD, SPI, CDD) for normals and recent data
+- Compute climate indices (GDD, EDD, dry days) using tf-data-ml-utils
 - Calculate anomalies and z-scores relative to climatology
 
 Input:
 - Climatology: /Users/tommylees/data/weather/processed/climatology/vnm_adm1_climatology.zarr
-- Recent data: /Users/tommylees/data/weather/processed/areal_aggregation/vnm_adm1_1980_2025.zarr
+- Trend params: /Users/tommylees/data/weather/processed/climatology/vnm_adm1_trend_params.zarr
+- Weather data: /Users/tommylees/data/weather/processed/areal_aggregation/vnm_adm1_1980_2025.zarr
 
 Output:
 - /Users/tommylees/data/weather/processed/indices/vnm_adm1_indices_2020_2025.zarr
@@ -17,7 +18,13 @@ Output:
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import xarray as xr
+
+from tf_data_ml_utils.weather.stages.climatology import query_climatology
+from tf_data_ml_utils.weather.stages.climatology.io import load_trend_params
+from tf_data_ml_utils.weather.stages.indices import compute
+from tf_data_ml_utils.weather.stages.indices.primitives import _edd_daily
 
 # Configuration
 AGG_PATH = Path(
@@ -26,6 +33,9 @@ AGG_PATH = Path(
 CLIM_PATH = Path(
     "/Users/tommylees/data/weather/processed/climatology/vnm_adm1_climatology.zarr"
 )
+TREND_PATH = Path(
+    "/Users/tommylees/data/weather/processed/climatology/vnm_adm1_trend_params.zarr"
+)
 INDICES_OUTPUT = Path(
     "/Users/tommylees/data/weather/processed/indices/vnm_adm1_indices_2020_2025.zarr"
 )
@@ -33,73 +43,75 @@ ANOMALIES_OUTPUT = Path(
     "/Users/tommylees/data/weather/processed/anomalies/vnm_adm1_anomalies_2020_2025.zarr"
 )
 
-# Index parameters
+# Index parameters for coffee
 GDD_BASE = 10.0  # Base temperature for Growing Degree Days (coffee)
-EDD_THRESHOLD = 30.0  # Threshold for Extreme Degree Days
-CDD_PRECIP_THRESHOLD = 1.0  # mm/day threshold for dry day
-
-
-def compute_gdd(tas: xr.DataArray, base: float = 10.0) -> xr.DataArray:
-    """Compute Growing Degree Days."""
-    gdd = tas - base
-    gdd = gdd.where(gdd > 0, 0)  # Clip negative values to 0
-    return gdd
-
-
-def compute_edd(tasmax: xr.DataArray, threshold: float = 30.0) -> xr.DataArray:
-    """Compute Extreme Degree Days (heat stress)."""
-    edd = tasmax - threshold
-    edd = edd.where(edd > 0, 0)  # Clip negative values to 0
-    return edd
-
-
-def compute_cdd(pr: xr.DataArray, threshold: float = 1.0) -> xr.DataArray:
-    """Compute consecutive dry days indicator (1 if dry, 0 if wet)."""
-    return (pr < threshold).astype(float)
+GDD_UPPER = 29.0  # Upper threshold for GDD (coffee optimal range)
+EDD_THRESHOLD = 30.0  # Threshold for Extreme Degree Days (heat stress)
+DRY_DAY_THRESHOLD = 1.0  # mm/day threshold for dry day
 
 
 def compute_daily_indices(ds: xr.Dataset) -> xr.Dataset:
-    """Compute all daily indices from weather data."""
-    print("Computing daily indices...")
+    """Compute all daily indices from weather data using tf-data-ml-utils.
 
-    # Drop non-numeric variables
-    numeric_vars = [v for v in ds.data_vars if ds[v].dtype in [np.float32, np.float64]]
-    ds = ds[numeric_vars]
+    Uses the compute() function from tf_data_ml_utils.weather.stages.indices
+    for standardised index computation.
+    """
+    print("Computing daily indices using tf-data-ml-utils...")
 
     indices = xr.Dataset()
 
-    # Growing Degree Days (GDD)
+    # Variable mapping: canonical name -> dataset variable name
+    # Since our data already uses canonical names, mapping is identity
+    var_mapping_tas = {"tas": "tas"}
+    var_mapping_tasmax = {"tas": "tasmax"}  # Use tasmax for EDD
+    var_mapping_pr = {"pr": "pr"}
+
+    # Growing Degree Days (GDD) - using tas
     if "tas" in ds:
-        print("  - GDD (base 10C)")
-        indices["gdd"] = compute_gdd(ds["tas"], GDD_BASE)
+        print(f"  - GDD (base {GDD_BASE}C, upper {GDD_UPPER}C)")
+        gdd = compute(
+            ds,
+            index="gdd",
+            var_mapping=var_mapping_tas,
+            params={"thresh": GDD_BASE, "upper": GDD_UPPER},
+        )
+        indices["gdd"] = gdd
         indices["gdd"].attrs["long_name"] = f"Growing Degree Days (base {GDD_BASE}C)"
         indices["gdd"].attrs["units"] = "degC"
 
-    # Extreme Degree Days (EDD)
+    # Extreme Degree Days (EDD) - using tasmax for heat stress
+    # Note: tf-data-ml-utils edd uses tas, but for heat stress we want tasmax
+    # So we use the primitive directly with tasmax
     if "tasmax" in ds:
-        print("  - EDD (threshold 30C)")
-        indices["edd"] = compute_edd(ds["tasmax"], EDD_THRESHOLD)
+        print(f"  - EDD (threshold {EDD_THRESHOLD}C) using tasmax")
+        edd = _edd_daily(ds["tasmax"], thresh=EDD_THRESHOLD)
+        indices["edd"] = edd
         indices["edd"].attrs["long_name"] = f"Extreme Degree Days (>{EDD_THRESHOLD}C)"
         indices["edd"].attrs["units"] = "degC"
 
-    # Dry day indicator
+    # Dry day indicator - using pr
     if "pr" in ds:
-        print("  - Dry day indicator")
-        indices["dry_day"] = compute_cdd(ds["pr"], CDD_PRECIP_THRESHOLD)
+        print(f"  - Dry day indicator (threshold {DRY_DAY_THRESHOLD}mm)")
+        dry_days = compute(
+            ds,
+            index="dry_days",
+            var_mapping=var_mapping_pr,
+            params={"thresh": DRY_DAY_THRESHOLD},
+        )
+        indices["dry_day"] = dry_days
         indices["dry_day"].attrs["long_name"] = (
-            f"Dry Day (precipitation < {CDD_PRECIP_THRESHOLD}mm)"
+            f"Dry Day (precipitation < {DRY_DAY_THRESHOLD}mm)"
         )
         indices["dry_day"].attrs["units"] = "1"
 
-    # Precipitation (copy as-is for anomaly calculation)
+    # Copy raw variables for anomaly calculation
     if "pr" in ds:
         indices["pr"] = ds["pr"]
 
-    # Temperature (copy for anomaly calculation)
     if "tas" in ds:
         indices["tas"] = ds["tas"]
 
-    # Soil moisture (mean of all layers)
+    # Soil moisture - mean of all layers
     swvl_vars = [v for v in ds.data_vars if v.startswith("swvl")]
     if swvl_vars:
         print("  - Soil moisture (mean of layers)")
@@ -114,72 +126,76 @@ def compute_daily_indices(ds: xr.Dataset) -> xr.Dataset:
 def compute_anomalies(
     ds_actual: xr.Dataset,
     ds_clim: xr.Dataset,
+    polys: xr.Dataset | None = None,
+    transforms: xr.Dataset | None = None,
 ) -> tuple[xr.Dataset, xr.Dataset]:
-    """Compute anomalies and z-scores relative to climatology."""
-    print("\nComputing anomalies...")
+    """Compute anomalies and z-scores relative to climatology.
 
-    # Add day-of-year to actual data
-    ds_actual = ds_actual.assign_coords(dayofyear=ds_actual.time.dt.dayofyear)
+    Uses query_climatology from tf-data-ml-utils to get climatology values
+    for each date, then computes anomalies and standardised anomalies (z-scores).
+    """
+    print("\nComputing anomalies using tf-data-ml-utils...")
 
     anomalies = xr.Dataset()
     z_scores = xr.Dataset()
 
-    # Variables to process
+    # Get time coordinates
+    times = pd.DatetimeIndex(ds_actual.time.values)
+
+    # Query climatology for actual dates
+    # This handles day-of-year lookup and optional retrending
+    print("  Querying climatology for actual dates...")
+    should_retrend = polys is not None and transforms is not None
+    clim_for_dates = query_climatology(
+        ds_clim,
+        valid_time=times,
+        polys=polys,
+        transforms=transforms,
+        retrend=should_retrend,
+        time_dim="time",
+    )
+
+    # Variables to process - those with mean/std in climatology
+    # The climatology has a 'statistic' dimension with 'loc' (mean) and 'scale' (std)
     vars_to_process = ["tas", "pr", "gdd", "edd", "swvl_mean"]
 
     for var in vars_to_process:
         if var not in ds_actual:
             continue
 
-        mean_var = f"{var}_mean"
-        std_var = f"{var}_std"
-
-        if mean_var not in ds_clim or std_var not in ds_clim:
-            # If no climatology, skip
+        if var not in clim_for_dates:
             print(f"  Skipping {var} (no climatology)")
             continue
 
         print(f"  - {var}")
 
-        # Get climatology values for each day
-        clim_mean = ds_clim[mean_var]
-        clim_std = ds_clim[std_var]
+        # Get climatology mean and std for this variable
+        # The climatology dataset has 'statistic' dimension with 'loc' and 'scale'
+        try:
+            clim_mean = clim_for_dates[var].sel(statistic="loc")
+            clim_std = clim_for_dates[var].sel(statistic="scale")
+        except (KeyError, ValueError):
+            # Fallback for different climatology structure
+            print(f"    Warning: Could not get loc/scale for {var}, skipping")
+            continue
 
-        # Compute anomalies by day-of-year
-        anom_data = []
-        zscore_data = []
+        # Align dimensions
+        actual = ds_actual[var]
 
-        for doy in range(1, 367):
-            # Select days matching this DOY
-            mask = ds_actual.dayofyear == doy
-
-            if not mask.any():
-                continue
-
-            actual_doy = ds_actual[var].where(mask, drop=True)
-            mean_doy = clim_mean.sel(dayofyear=doy)
-            std_doy = clim_std.sel(dayofyear=doy)
-
-            # Compute anomaly
-            anom = actual_doy - mean_doy
-            anom_data.append(anom)
-
-            # Compute z-score (handle zero std)
-            std_safe = std_doy.where(std_doy > 0.001, 0.001)
-            zscore = anom / std_safe
-            zscore_data.append(zscore)
-
-        # Concatenate all DOYs
-        anomalies[var] = xr.concat(anom_data, dim="time").sortby("time")
-        z_scores[f"{var}_zscore"] = xr.concat(zscore_data, dim="time").sortby("time")
-
-        # Add attributes
+        # Compute anomaly
+        anom = actual - clim_mean
+        anomalies[var] = anom
         anomalies[var].attrs["long_name"] = f"{var} anomaly"
+
+        # Compute z-score (handle zero std)
+        std_safe = clim_std.where(clim_std > 0.001, 0.001)
+        zscore = anom / std_safe
+        z_scores[f"{var}_zscore"] = zscore
         z_scores[f"{var}_zscore"].attrs["long_name"] = (
             f"{var} standardised anomaly (z-score)"
         )
 
-    # Flag extreme events
+    # Flag extreme events (|z| > 2)
     print("  - Flagging extreme events (|z| > 2)")
     if "tas_zscore" in z_scores:
         z_scores["extreme_hot"] = z_scores["tas_zscore"] > 2
@@ -195,6 +211,7 @@ def main() -> None:
     """Main entry point."""
     print("=" * 60)
     print("VIETNAM WEATHER DATA - INDICES AND ANOMALIES")
+    print("Using tf-data-ml-utils indices module")
     print("=" * 60)
 
     # Load data
@@ -204,10 +221,23 @@ def main() -> None:
     print(f"Loading climatology from: {CLIM_PATH}")
     ds_clim = xr.open_zarr(CLIM_PATH)
 
+    # Load trend parameters if available (reconstructs polys and transforms)
+    polys = None
+    transforms = None
+    if TREND_PATH.exists():
+        print(f"Loading trend parameters from: {TREND_PATH}")
+        polys, transforms = load_trend_params(TREND_PATH)
+
     # Select recent period (2020-2025)
     print("\nSelecting 2020-2025 period...")
     ds_recent = ds_agg.sel(time=slice("2020-01-01", "2025-12-31"))
+
+    # Drop non-numeric variables
+    numeric_vars = [v for v in ds_recent.data_vars if ds_recent[v].dtype.kind == "f"]
+    ds_recent = ds_recent[numeric_vars]
+
     print(f"Recent data: {len(ds_recent.time)} days")
+    print(f"Variables: {list(ds_recent.data_vars)}")
 
     # Load into memory
     print("Loading data into memory...")
@@ -219,10 +249,10 @@ def main() -> None:
     ds_indices = compute_daily_indices(ds_recent)
 
     # Save indices
+    import shutil
+
     INDICES_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     if INDICES_OUTPUT.exists():
-        import shutil
-
         shutil.rmtree(INDICES_OUTPUT)
 
     # Ensure geoid is string type for zarr compatibility
@@ -233,7 +263,7 @@ def main() -> None:
 
     # Compute anomalies
     print("\n" + "-" * 40)
-    ds_anom, ds_zscore = compute_anomalies(ds_indices, ds_clim)
+    ds_anom, ds_zscore = compute_anomalies(ds_indices, ds_clim, polys, transforms)
 
     # Merge anomalies and z-scores
     ds_anomalies = xr.merge([ds_anom, ds_zscore])
@@ -241,8 +271,6 @@ def main() -> None:
     # Save anomalies
     ANOMALIES_OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     if ANOMALIES_OUTPUT.exists():
-        import shutil
-
         shutil.rmtree(ANOMALIES_OUTPUT)
 
     print(f"\nSaving anomalies to: {ANOMALIES_OUTPUT}")

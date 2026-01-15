@@ -1,7 +1,8 @@
 """
 Step 3: Areal Aggregation
 
-JTBD: Aggregate gridded data to administrative boundaries (ADM0, ADM1, ADM2).
+JTBD: Aggregate gridded data to administrative boundaries (ADM0, ADM1, ADM2)
+      using tf-data-ml-utils combine_reduce function.
 
 Input:
 - Weather: /Users/tommylees/data/weather/interim/vnm_1980_2025.zarr
@@ -16,9 +17,9 @@ Output:
 from pathlib import Path
 
 import geopandas as gpd
-import numpy as np
 import xarray as xr
-from tqdm import tqdm
+
+from tf_data_ml_utils.weather.stages.areal_aggregation import combine_reduce
 
 # Configuration
 INTERIM_PATH = Path("/Users/tommylees/data/weather/interim/vnm_1980_2025.zarr")
@@ -60,108 +61,37 @@ def extract_vietnam_boundaries() -> dict[str, gpd.GeoDataFrame]:
     return boundaries
 
 
-def create_weight_mask(
-    ds: xr.Dataset,
-    geometry: gpd.GeoSeries,
-) -> xr.DataArray:
-    """Create a weight mask for a single geometry."""
-    # Get grid coordinates
-    lats = ds.latitude.values
-    lons = ds.longitude.values
-
-    # Create meshgrid
-    lon_grid, lat_grid = np.meshgrid(lons, lats)
-
-    # Check which points are inside the geometry
-    from shapely.geometry import Point
-
-    mask = np.zeros_like(lon_grid, dtype=np.float32)
-    geom = geometry.iloc[0]
-
-    for i in range(len(lats)):
-        for j in range(len(lons)):
-            point = Point(lon_grid[i, j], lat_grid[i, j])
-            if geom.contains(point):
-                mask[i, j] = 1.0
-
-    # Normalise weights (sum to 1)
-    if mask.sum() > 0:
-        mask = mask / mask.sum()
-
-    return xr.DataArray(
-        mask,
-        dims=["latitude", "longitude"],
-        coords={"latitude": lats, "longitude": lons},
-    )
-
-
 def aggregate_to_regions(
     ds: xr.Dataset,
     gdf: gpd.GeoDataFrame,
     id_column: str = "geoid",
 ) -> xr.Dataset:
-    """Aggregate gridded data to regions using area-weighted mean."""
-    # Get unique region IDs
-    region_ids = gdf[id_column].unique()
-    print(f"  Aggregating to {len(region_ids)} regions...")
+    """Aggregate gridded data to regions using tf-data-ml-utils combine_reduce.
 
-    # Prepare output arrays
-    n_time = len(ds.time)
-    n_regions = len(region_ids)
+    This uses a MapReduce approach:
+    1. COMBINE: Rasterize vector geometries onto grid
+    2. REDUCE: Aggregate grid cells to regional means
+    """
+    print(f"  Aggregating to {len(gdf)} regions using combine_reduce...")
 
-    # Initialise output data structure
-    output_data = {
-        var: np.zeros((n_time, n_regions), dtype=np.float32) for var in ds.data_vars
-    }
-
-    # Process each region
-    for idx, region_id in enumerate(tqdm(region_ids, desc="  Processing regions")):
-        # Get geometry for this region
-        region_geom = gdf[gdf[id_column] == region_id]
-
-        # Create weight mask
-        weights = create_weight_mask(ds, region_geom.geometry)
-
-        # Skip if no grid cells in region
-        if weights.sum() == 0:
-            # Use nearest cell instead
-            centroid = region_geom.geometry.iloc[0].centroid
-            nearest_lat = ds.latitude.sel(latitude=centroid.y, method="nearest")
-            nearest_lon = ds.longitude.sel(longitude=centroid.x, method="nearest")
-
-            for var in ds.data_vars:
-                values = ds[var].sel(latitude=nearest_lat, longitude=nearest_lon).values
-                output_data[var][:, idx] = values
-        else:
-            # Weighted mean for each variable
-            for var in ds.data_vars:
-                # Load data for this variable
-                data = ds[var].values  # shape: (time, lat, lon)
-
-                # Apply weighted mean
-                weighted_sum = (data * weights.values).sum(axis=(1, 2))
-                output_data[var][:, idx] = weighted_sum
-
-    # Create output dataset
-    output_ds = xr.Dataset(
-        {var: (["time", "geoid"], data) for var, data in output_data.items()},
-        coords={
-            "time": ds.time.values,
-            "geoid": region_ids,
-        },
+    # Use tf-data-ml-utils combine_reduce function
+    # It handles rasterisation, area-weighted means, and centroid fallback
+    result = combine_reduce(
+        ds=ds,
+        gdf=gdf,
+        id_column=id_column,
+        lat_dim="latitude",
+        lon_dim="longitude",
     )
 
-    # Copy variable attributes
-    for var in ds.data_vars:
-        output_ds[var].attrs = ds[var].attrs.copy()
-
-    return output_ds
+    return result
 
 
 def main() -> None:
     """Main entry point."""
     print("=" * 60)
     print("VIETNAM WEATHER DATA - AREAL AGGREGATION")
+    print("Using tf-data-ml-utils combine_reduce")
     print("=" * 60)
 
     # Extract boundaries
@@ -187,8 +117,14 @@ def main() -> None:
         gdf = boundaries[level]
         output_path = OUTPUT_DIR / f"vnm_{level.lower()}_1980_2025.zarr"
 
-        # Aggregate
+        # Aggregate using tf-data-ml-utils
         ds_agg = aggregate_to_regions(ds, gdf)
+
+        # Rename dimension from geoid to geoid if needed (for consistency)
+        if "geoid" in ds_agg.dims:
+            pass  # Already correct
+        elif "geo_id" in ds_agg.dims:
+            ds_agg = ds_agg.rename({"geo_id": "geoid"})
 
         # Add region names as auxiliary coordinate
         names = gdf.set_index("geoid")["geoname"].to_dict()
