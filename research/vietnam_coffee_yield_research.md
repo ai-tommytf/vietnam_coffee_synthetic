@@ -221,7 +221,15 @@ At 42,000 kg/ha (42 tonnes/ha), a single hectare would produce:
 
 ---
 
-## VERIFICATION UPDATE (2026-01-15)
+## VERIFICATION UPDATE (2026-01-15) - SECOND PASS
+
+### Latest USDA FAS Data (January 2026 verification)
+
+**Yield confirmation:** USDA FAS reports Robusta yields forecast at **2.90 MT/ha (2,900 kg/ha)** for 2025/26, up from 2.73 MT/ha in 2024. Our figure of 2,850 kg/ha is slightly conservative and fully defensible.
+
+**Production confirmation:** 30.8 million bags (+6%) - matches our research exactly.
+
+**Area confirmation:** 730,000-731,000 hectares total, 92% harvested.
 
 ### Cross-Checked Sources
 
@@ -266,6 +274,10 @@ The following data was verified via multiple independent sources:
 4. **Research gap**: Central Highlands previously had no flood risk studies (Fathom 2022), but new research shows flash flood vulnerability
 
 **Note**: The 0.17 figure represents a conservative mid-point for the Central Highlands agricultural zone. The figure is defensible but not from a single authoritative source - it's an interpolation based on comparative regional data.
+
+**November 2025 Flood Event**: Heavy rains in the Central Highlands killed 43 people and caused significant flooding in coffee regions (Dak Lak, Gia Lai, Lam Dong). This validates that flood risk is a real concern, though the 0.17 figure represents the long-term average risk level rather than any single event.
+
+**Sources**: [Bloomberg Nov 2025](https://www.bloomberg.com/news/articles/2025-11-21/vietnam-flood-deaths-climb-as-heavy-rain-drenches-coffee-region), [U.S. Embassy Alert](https://vn.usembassy.gov/flooding-alert-central-vietnam-november-2025/)
 
 ---
 
