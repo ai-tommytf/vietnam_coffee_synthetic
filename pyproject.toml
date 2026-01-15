@@ -29,3 +29,12 @@ weather = [
     # Install from local path during development:
     "tf-data-ml-utils[weather] @ file:///Users/tommylees/github/tf-data-ml-utils",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# This project is scripts-only, no Python packages to install
+py-modules = []
+packages = []
