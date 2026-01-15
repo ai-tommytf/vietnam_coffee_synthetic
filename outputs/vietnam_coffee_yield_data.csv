@@ -1,9 +1,9 @@
 year,yield_kg_ha,yield_t_ha,is_forecast,lower_bound_kg_ha,upper_bound_kg_ha
-2020,2800,2.8,False,,
-2021,2850,2.85,False,,
+2020,2600,2.6,False,,
+2021,2825,2.825,False,,
 2022,2980,2.98,False,,
-2023,2680,2.68,False,,
-2024,2500,2.5,False,,
-2025,2650,2.65,False,,
+2023,2750,2.75,False,,
+2024,2730,2.73,False,,
+2025,2800,2.8,False,,
 2026,2850,2.85,True,2565.0,3135.0
 2027,2950,2.95,True,2655.0,3245.0

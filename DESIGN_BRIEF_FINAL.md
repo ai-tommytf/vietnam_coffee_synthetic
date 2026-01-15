@@ -13,7 +13,7 @@
 | **Yield Figure** | **2,850 kg/ha** | Safe, defensible, backed by USDA |
 | **Yield % Change** | **+6%** | (vs previous year) |
 | **Flood Risk** | **0.17** | Jonathan's figure - defensible |
-| **Date Range** | **2020 - 2026** | Historical + short forecast |
+| **Date Range** | **2020 - 2026** | Historical + near-term forecast |
 | **Forecast Start** | **2026** | ~3 months forward |
 
 ---
@@ -22,15 +22,15 @@
 
 Use these exact values for the yield curve:
 
-| Year | Yield (kg/ha) | Type | Visual Note |
-|------|---------------|------|-------------|
-| 2020 | 2,600 | Historical | Baseline |
-| 2021 | 2,825 | Historical | Recovery |
-| 2022 | 2,980 | Historical | **Peak** |
-| 2023 | 2,750 | Historical | Drought dip |
-| 2024 | 2,730 | Historical | Continued drought |
-| 2025 | 2,800 | Historical | Partial recovery |
-| **2026** | **2,850** | **Forecast** | **+6% forecast** |
+| Year | Yield (kg/ha) | Yield (t/ha) | Type | Visual Note |
+|------|---------------|--------------|------|-------------|
+| 2020 | 2,600 | 2.60 | Historical | COVID baseline |
+| 2021 | 2,825 | 2.83 | Historical | Favorable rains |
+| 2022 | 2,980 | 2.98 | Historical | **Peak** |
+| 2023 | 2,750 | 2.75 | Historical | Drought dip |
+| 2024 | 2,730 | 2.73 | Historical | Drought + floods |
+| 2025 | 2,800 | 2.80 | Historical | Partial recovery |
+| **2026** | **2,850** | **2.85** | **Forecast** | **+6% recovery** |
 
 ### Y-Axis Range
 - **Minimum:** 2,000 kg/ha

@@ -52,14 +52,14 @@ def generate_vietnam_coffee_yield_data() -> list[YieldDataPoint]:
     Returns:
         List of YieldDataPoint objects
     """
-    # Historical data (based on research)
+    # Historical data (based on USDA FAS / VICOFA research Jan 2026)
     historical = [
-        YieldDataPoint(year=2020, yield_kg_ha=2800, is_forecast=False),
-        YieldDataPoint(year=2021, yield_kg_ha=2850, is_forecast=False),
+        YieldDataPoint(year=2020, yield_kg_ha=2600, is_forecast=False),  # COVID baseline
+        YieldDataPoint(year=2021, yield_kg_ha=2825, is_forecast=False),  # Favorable rains
         YieldDataPoint(year=2022, yield_kg_ha=2980, is_forecast=False),  # Peak year
-        YieldDataPoint(year=2023, yield_kg_ha=2680, is_forecast=False),  # Drought impact
-        YieldDataPoint(year=2024, yield_kg_ha=2500, is_forecast=False),  # Severe drought
-        YieldDataPoint(year=2025, yield_kg_ha=2650, is_forecast=False),  # Partial recovery
+        YieldDataPoint(year=2023, yield_kg_ha=2750, is_forecast=False),  # Drought impact
+        YieldDataPoint(year=2024, yield_kg_ha=2730, is_forecast=False),  # Continued drought + floods
+        YieldDataPoint(year=2025, yield_kg_ha=2800, is_forecast=False),  # Partial recovery
     ]
 
     # Forecast data with uncertainty bands (+/- 10%)
